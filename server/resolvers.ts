@@ -4,10 +4,11 @@ import {
   buildClassWorkload,
   buildWorkloadAnalysis,
   computeFreeSlots,
+  freeSlotsFrom,
   matchOpportunities,
 } from './ai/analysis.js';
 import { gemmaEnabled } from './ai/gemma.js';
-import { hashPassword, normaliseEmail, verifyPassword } from './auth.js';
+import { hashPassword, normaliseEmail, verifyOrPad, verifyPassword } from './auth.js';
 import { DAYS } from '../shared/types.js';
 import type { Day, StudentProfile, UserAccount, WeeklyScheduleItem } from '../shared/types.js';
 
@@ -34,7 +35,7 @@ function currentUser(ctx: Ctx): UserAccount {
 }
 
 function visibleStudents(user: UserAccount): StudentProfile[] {
-  if (user.role === 'teacher') return db.students.find((s) => s.teacherId === user.id);
+  if (user.role === 'teacher') return db.students.byTeacher(user.id);
   if (user.role === 'parent') {
     return db.parentLinks
       .childrenOf(user.id)
@@ -81,8 +82,8 @@ function validateSlot(timeSlot: string) {
 }
 
 function fullSchedule(studentId: string): WeeklyScheduleItem[] {
-  const stored = db.schedule.find((s) => s.studentId === studentId && !s.isFreeSlot);
-  const free = computeFreeSlots(studentId);
+  const stored = db.schedule.byStudent(studentId).filter((i) => !i.isFreeSlot);
+  const free = freeSlotsFrom(studentId, stored);
   const dayIdx = (d: Day) => DAYS.indexOf(d);
   return [...stored, ...free].sort(
     (a, b) => dayIdx(a.day) - dayIdx(b.day) || a.timeSlot.localeCompare(b.timeSlot),
@@ -113,20 +114,22 @@ export const resolvers = {
       fullSchedule(authorize(ctx, studentId, 'view').id),
     freeSlots: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
       computeFreeSlots(authorize(ctx, studentId, 'view').id),
-    assignments: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
-      db.assignments
-        .find((a) => a.studentId === authorize(ctx, studentId, 'view').id)
-        .sort((a, b) => a.dueDate.localeCompare(b.dueDate)),
-    exams: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
-      db.exams
-        .find((e) => e.studentId === authorize(ctx, studentId, 'view').id)
-        .sort((a, b) => a.examDate.localeCompare(b.examDate)),
+    assignments: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) => {
+      const owner = authorize(ctx, studentId, 'view');
+      return db.assignments.byStudent(owner.id).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    },
+    exams: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) => {
+      const owner = authorize(ctx, studentId, 'view');
+      return db.exams.byStudent(owner.id).sort((a, b) => a.examDate.localeCompare(b.examDate));
+    },
     opportunities: (_: unknown, __: unknown, ctx: Ctx) => {
       currentUser(ctx);
       return db.opportunities.all();
     },
-    matchedOpportunities: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
-      matchOpportunities(authorize(ctx, studentId, 'view')),
+    matchedOpportunities: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) => {
+      const student = authorize(ctx, studentId, 'view');
+      return matchOpportunities(student, computeFreeSlots(student.id));
+    },
     workloadAnalysis: async (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
       buildWorkloadAnalysis(authorize(ctx, studentId, 'view')),
     classWorkload: async (_: unknown, __: unknown, ctx: Ctx) => {
@@ -139,12 +142,11 @@ export const resolvers = {
   },
 
   Mutation: {
-    login: (_: unknown, { email, password }: { email: string; password: string }, ctx: Ctx) => {
+    login: async (_: unknown, { email, password }: { email: string; password: string }, ctx: Ctx) => {
       const user = db.users.byEmail(normaliseEmail(email));
-      // Same message for unknown email and wrong password, so the form cannot enumerate accounts.
-      if (!user || !verifyPassword(password, user.passwordHash)) {
-        throw new UserInputError('И-мэйл эсвэл нууц үг буруу байна.');
-      }
+      // Same message and same scrypt cost whether or not the address exists.
+      const ok = await verifyOrPad(password, user?.passwordHash);
+      if (!ok || !user) throw new UserInputError('И-мэйл эсвэл нууц үг буруу байна.');
       ctx.openSession(user.id);
       return user;
     },
@@ -154,24 +156,24 @@ export const resolvers = {
       return true;
     },
 
-    changePassword: (
+    changePassword: async (
       _: unknown,
       { currentPassword, newPassword }: { currentPassword: string; newPassword: string },
       ctx: Ctx,
     ) => {
       const user = currentUser(ctx);
-      if (!verifyPassword(currentPassword, user.passwordHash)) {
+      if (!(await verifyPassword(currentPassword, user.passwordHash))) {
         throw new UserInputError('Одоогийн нууц үг буруу байна.');
       }
       const next = parsePassword(newPassword);
-      db.users.update(user.id, { passwordHash: hashPassword(next) });
+      db.users.update(user.id, { passwordHash: await hashPassword(next) });
       // Force every other device to sign in again with the new password.
       db.sessions.dropAllForUser(user.id);
       ctx.openSession(user.id);
       return true;
     },
 
-    createStudent: (
+    createStudent: async (
       _: unknown,
       args: {
         name: string;
@@ -208,7 +210,7 @@ export const resolvers = {
           email,
           displayName: name,
           role: 'student',
-          passwordHash: hashPassword(password),
+          passwordHash: await hashPassword(password),
           createdAt: new Date().toISOString(),
           studentId: student.id,
         },
@@ -218,16 +220,18 @@ export const resolvers = {
       if (args.parentEmail?.trim()) {
         const parentEmail = parseEmail(args.parentEmail);
         const existing = db.users.byEmail(parentEmail);
-        const parentId = existing?.id ?? db.users.insert(
-          {
-            email: parentEmail,
-            displayName: args.parentName?.trim() || 'Эцэг эх',
-            role: 'parent',
-            passwordHash: hashPassword(parsePassword(args.password)),
-            createdAt: new Date().toISOString(),
-          },
-          'usr',
-        ).id;
+        const parentId =
+          existing?.id ??
+          db.users.insert(
+            {
+              email: parentEmail,
+              displayName: args.parentName?.trim() || 'Эцэг эх',
+              role: 'parent',
+              passwordHash: await hashPassword(parsePassword(args.password)),
+              createdAt: new Date().toISOString(),
+            },
+            'usr',
+          ).id;
         db.parentLinks.add(parentId, student.id);
       }
       return student;
@@ -239,9 +243,9 @@ export const resolvers = {
       if (account) db.sessions.dropAllForUser(account.id);
       const parentIds = db.parentLinks.parentsOf(id);
       for (const parentId of parentIds) db.parentLinks.remove(parentId, id);
-      for (const item of db.schedule.find((s) => s.studentId === id)) db.schedule.remove(item.id);
-      for (const item of db.assignments.find((a) => a.studentId === id)) db.assignments.remove(item.id);
-      for (const item of db.exams.find((e) => e.studentId === id)) db.exams.remove(item.id);
+      db.schedule.removeForStudent(id);
+      db.assignments.removeForStudent(id);
+      db.exams.removeForStudent(id);
       if (account) db.users.remove(account.id);
       // A parent account created for this student only is useless once the link is gone.
       for (const parentId of parentIds) {

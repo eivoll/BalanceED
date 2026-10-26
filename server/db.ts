@@ -38,6 +38,9 @@ mkdirSync(dirname(DB_PATH), { recursive: true });
 
 const sqlite = new DatabaseSync(DB_PATH);
 sqlite.exec('PRAGMA journal_mode = WAL');
+// NORMAL is the pairing WAL documents: a crash loses at most the last write, it cannot corrupt.
+sqlite.exec('PRAGMA synchronous = NORMAL');
+sqlite.exec('PRAGMA busy_timeout = 5000');
 
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS students (
@@ -106,6 +109,9 @@ sqlite.exec(`
     PRIMARY KEY (parent_id, student_id)
   );
   CREATE INDEX IF NOT EXISTS ix_parent_links_student ON parent_links (student_id);
+  CREATE INDEX IF NOT EXISTS ix_students_teacher ON students (teacher_id);
+  CREATE INDEX IF NOT EXISTS ix_users_student ON users (student_id);
+  CREATE INDEX IF NOT EXISTS ix_sessions_expiry ON sessions (expires_at);
 `);
 
 // Databases created before accounts existed only need the new column added.
@@ -132,7 +138,7 @@ class SqlCollection<T extends { id: string }> {
     table: string,
     private readonly columns: readonly string[],
     private readonly toRow: (entity: T) => SqlValue[],
-    private readonly fromRow: (row: Row) => T,
+    protected readonly fromRow: (row: Row) => T,
   ) {
     const cols = columns.map((c) => `"${c}"`).join(', ');
     const placeholders = columns.map(() => '?').join(', ');
@@ -189,6 +195,33 @@ class SqlCollection<T extends { id: string }> {
   }
 }
 
+/** A table whose rows belong to one student, so per-student reads stay indexed. */
+class StudentScoped<T extends { id: string; studentId: string }> extends SqlCollection<T> {
+  private readonly stmtByStudent: Stmt;
+  private readonly stmtDropStudent: Stmt;
+
+  constructor(
+    table: string,
+    columns: readonly string[],
+    toRow: (entity: T) => SqlValue[],
+    fromRow: (row: Row) => T,
+  ) {
+    super(table, columns, toRow, fromRow);
+    const cols = columns.map((c) => `"${c}"`).join(', ');
+    this.stmtByStudent = sqlite.prepare(`SELECT ${cols} FROM "${table}" WHERE student_id = ? ORDER BY rowid`);
+    this.stmtDropStudent = sqlite.prepare(`DELETE FROM "${table}" WHERE student_id = ?`);
+  }
+
+  byStudent(studentId: string): T[] {
+    return (this.stmtByStudent.all(studentId) as Row[]).map(this.fromRow);
+  }
+
+  /** One statement instead of a delete per row. Returns how many went. */
+  removeForStudent(studentId: string): number {
+    return Number(this.stmtDropStudent.run(studentId).changes);
+  }
+}
+
 const json = (value: unknown): SqlValue => JSON.stringify(value);
 const parse = <V>(value: SqlValue, fallback: V): V => {
   try {
@@ -200,34 +233,48 @@ const parse = <V>(value: SqlValue, fallback: V): V => {
 const flag = (value: boolean): number => (value ? 1 : 0);
 const text = (value: SqlValue): string => String(value ?? '');
 
-const students = new SqlCollection<StudentProfile>(
-  'students',
-  ['id', 'name', 'grade', 'school', 'about_me', 'is_schedule_approved', 'approved_date', 'teacher_id'],
-  (e) => [
-    e.id,
-    e.name,
-    e.grade,
-    e.school,
-    json(e.aboutMe),
-    flag(e.parentVerification.isScheduleApproved),
-    e.parentVerification.approvedDate ?? null,
-    e.teacherId ?? null,
-  ],
-  (r) => ({
-    id: text(r.id),
-    name: text(r.name),
-    grade: text(r.grade),
-    school: text(r.school),
-    aboutMe: parse(r.about_me, { interests: [], skills: [], careerGoals: [] }),
-    parentVerification: {
-      isScheduleApproved: Number(r.is_schedule_approved) === 1,
-      ...(r.approved_date == null ? {} : { approvedDate: text(r.approved_date) }),
-    },
-    ...(r.teacher_id == null ? {} : { teacherId: text(r.teacher_id) }),
-  }),
+const STUDENT_COLS = ['id', 'name', 'grade', 'school', 'about_me', 'is_schedule_approved', 'approved_date', 'teacher_id'] as const;
+const studentFromRow = (r: Row): StudentProfile => ({
+  id: text(r.id),
+  name: text(r.name),
+  grade: text(r.grade),
+  school: text(r.school),
+  aboutMe: parse(r.about_me, { interests: [], skills: [], careerGoals: [] }),
+  parentVerification: {
+    isScheduleApproved: Number(r.is_schedule_approved) === 1,
+    ...(r.approved_date == null ? {} : { approvedDate: text(r.approved_date) }),
+  },
+  ...(r.teacher_id == null ? {} : { teacherId: text(r.teacher_id) }),
+});
+
+const stmtStudentsByTeacher = sqlite.prepare(
+  `SELECT ${STUDENT_COLS.map((c) => `"${c}"`).join(', ')} FROM students WHERE teacher_id = ? ORDER BY rowid`,
 );
 
-const schedule = new SqlCollection<WeeklyScheduleItem>(
+const students = Object.assign(
+  new SqlCollection<StudentProfile>(
+    'students',
+    STUDENT_COLS,
+    (e) => [
+      e.id,
+      e.name,
+      e.grade,
+      e.school,
+      json(e.aboutMe),
+      flag(e.parentVerification.isScheduleApproved),
+      e.parentVerification.approvedDate ?? null,
+      e.teacherId ?? null,
+    ],
+    studentFromRow,
+  ),
+  {
+    byTeacher(teacherId: string): StudentProfile[] {
+      return (stmtStudentsByTeacher.all(teacherId) as Row[]).map(studentFromRow);
+    },
+  },
+);
+
+const schedule = new StudentScoped<WeeklyScheduleItem>(
   'schedule_items',
   ['id', 'student_id', 'day', 'time_slot', 'activity', 'is_free_slot'],
   (e) => [e.id, e.studentId, e.day, e.timeSlot, e.activity, flag(e.isFreeSlot)],
@@ -241,7 +288,7 @@ const schedule = new SqlCollection<WeeklyScheduleItem>(
   }),
 );
 
-const assignments = new SqlCollection<Assignment>(
+const assignments = new StudentScoped<Assignment>(
   'assignments',
   ['id', 'student_id', 'title', 'subject', 'due_date', 'is_completed'],
   (e) => [e.id, e.studentId, e.title, e.subject, e.dueDate, flag(e.isCompleted)],
@@ -255,7 +302,7 @@ const assignments = new SqlCollection<Assignment>(
   }),
 );
 
-const exams = new SqlCollection<Exam>(
+const exams = new StudentScoped<Exam>(
   'exams',
   ['id', 'student_id', 'subject', 'exam_date', 'time'],
   (e) => [e.id, e.studentId, e.subject, e.examDate, e.time],
@@ -321,10 +368,16 @@ const stmtSessionDrop = sqlite.prepare('DELETE FROM sessions WHERE token_hash = 
 const stmtSessionDropUser = sqlite.prepare('DELETE FROM sessions WHERE user_id = ?');
 const stmtSessionPrune = sqlite.prepare('DELETE FROM sessions WHERE expires_at < ?');
 
+let lastPruneAt = 0;
 const sessions = {
   create(tokenHash: string, userId: string, ttlMs = SESSION_TTL_MS): void {
-    stmtSessionPrune.run(Date.now());
-    stmtSessionAdd.run(tokenHash, userId, Date.now() + ttlMs);
+    const now = Date.now();
+    // Expired tokens are swept on login, but a burst of logins should not sweep once each.
+    if (now - lastPruneAt > 60_000) {
+      lastPruneAt = now;
+      stmtSessionPrune.run(now);
+    }
+    stmtSessionAdd.run(tokenHash, userId, now + ttlMs);
   },
   userIdFor(tokenHash: string): string | null {
     const row = stmtSessionGet.get(tokenHash) as Row | undefined;
@@ -386,6 +439,13 @@ const tables: Tables = {
     return adopted;
   },
 };
-seedIfEmpty(tables);
+
+/**
+ * Called from startup instead of at import so the one-off scrypt hash for the
+ * demo accounts can be awaited rather than blocking module evaluation.
+ */
+export async function ensureSeeded(): Promise<void> {
+  await seedIfEmpty(tables);
+}
 
 export const db = { students, schedule, assignments, exams, opportunities, users, sessions, parentLinks };

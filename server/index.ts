@@ -8,7 +8,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { typeDefs } from './schema.js';
 import { resolvers, type Ctx } from './resolvers.js';
-import { db } from './db.js';
+import { db, ensureSeeded } from './db.js';
 import { gemmaEnabled } from './ai/gemma.js';
 import {
   SESSION_COOKIE,
@@ -23,6 +23,8 @@ const here = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3300);
 
 async function main() {
+  await ensureSeeded();
+
   const app = express();
   app.use(cors({ origin: true, credentials: true }));
   app.use(express.json());

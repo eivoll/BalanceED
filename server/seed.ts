@@ -104,10 +104,10 @@ const OPPORTUNITIES: Opportunity[] = [
   { id: 'opp_6', title: 'Charity piano concert crew', organizer: 'Red Cross UB Youth', requiredSkills: ['Piano', 'Music'], day: 'Saturday', timeSlot: '15:00-17:00', level: 'School' },
 ];
 
-/** Built lazily: scrypt hashing is far too slow to pay for on every boot. */
-function demoUsers(): UserAccount[] {
+/** One scrypt run for all three accounts; only paid when the users table is empty. */
+async function demoUsers(): Promise<UserAccount[]> {
   const createdAt = new Date().toISOString();
-  const passwordHash = hashPassword(DEMO_PASSWORD);
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
   return [
     { id: 'usr_teacher', email: 'teacher@demo.mn', displayName: 'О. Энхжаргал', role: 'teacher', passwordHash, createdAt },
     { id: 'usr_student_1', email: 'student@demo.mn', displayName: 'Батбаяр Ганбаатар', role: 'student', passwordHash, createdAt, studentId: 'stu_1' },
@@ -117,7 +117,7 @@ function demoUsers(): UserAccount[] {
 
 const DEMO_PARENT_LINKS: [string, string][] = [['usr_parent_1', 'stu_1']];
 
-export function seedIfEmpty(tables: Tables): void {
+export async function seedIfEmpty(tables: Tables): Promise<void> {
   if (tables.students.size() === 0) {
     for (const row of STUDENTS) tables.students.insertSeed(row);
     for (const row of SCHEDULE) tables.schedule.insertSeed(row);
@@ -131,7 +131,7 @@ export function seedIfEmpty(tables: Tables): void {
   }
 
   if (tables.users.size() === 0) {
-    const accounts = demoUsers();
+    const accounts = await demoUsers();
     for (const row of accounts) tables.users.insertSeed(row);
     for (const [parentId, studentId] of DEMO_PARENT_LINKS) tables.linkParent(parentId, studentId);
     console.log(

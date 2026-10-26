@@ -37,12 +37,11 @@ export function fmtSlot(start: number, end: number): string {
 }
 
 /** Gaps of >= 1h in the student's day window, per spec "remaining empty time = Free Slots". */
-export function computeFreeSlots(studentId: string): WeeklyScheduleItem[] {
-  const items = db.schedule.find((s) => s.studentId === studentId && !s.isFreeSlot);
+export function freeSlotsFrom(studentId: string, stored: WeeklyScheduleItem[]): WeeklyScheduleItem[] {
   const out: WeeklyScheduleItem[] = [];
   for (const day of DAYS) {
     const [winStart, winEnd] = DAY_WINDOW[day];
-    const busy = items
+    const busy = stored
       .filter((i) => i.day === day)
       .map((i) => parseSlot(i.timeSlot))
       .sort((a, b) => a[0] - b[0]);
@@ -54,6 +53,15 @@ export function computeFreeSlots(studentId: string): WeeklyScheduleItem[] {
     if (winEnd - cursor >= 1) out.push(freeItem(studentId, day, cursor, winEnd));
   }
   return out;
+}
+
+/** Stored items only — the derived free slots are never persisted. */
+function storedSchedule(studentId: string): WeeklyScheduleItem[] {
+  return db.schedule.byStudent(studentId).filter((i) => !i.isFreeSlot);
+}
+
+export function computeFreeSlots(studentId: string): WeeklyScheduleItem[] {
+  return freeSlotsFrom(studentId, storedSchedule(studentId));
 }
 
 let freeSeq = 0;
@@ -68,9 +76,9 @@ function freeItem(studentId: string, day: Day, start: number, end: number): Week
   };
 }
 
-function busyHoursByDay(studentId: string): Map<Day, number> {
+function busyHoursByDay(stored: WeeklyScheduleItem[]): Map<Day, number> {
   const map = new Map<Day, number>();
-  for (const item of db.schedule.find((s) => s.studentId === studentId && !s.isFreeSlot)) {
+  for (const item of stored) {
     const [s, e] = parseSlot(item.timeSlot);
     map.set(item.day, (map.get(item.day) ?? 0) + (e - s));
   }
@@ -110,8 +118,7 @@ const DAY_MN: Record<Day, string> = {
   Sunday: 'Ням',
 };
 
-export function matchOpportunities(student: StudentProfile): OpportunityWithMatch[] {
-  const free = computeFreeSlots(student.id);
+export function matchOpportunities(student: StudentProfile, free: WeeklyScheduleItem[]): OpportunityWithMatch[] {
   const interests = student.aboutMe.interests.map(normalize);
   const skills = student.aboutMe.skills.map(normalize);
 
@@ -154,8 +161,10 @@ export function matchOpportunities(student: StudentProfile): OpportunityWithMatc
     .sort((a, b) => parseInt(b.matchScore) - parseInt(a.matchScore));
 }
 
-function matchedOpportunitiesForAnalysis(student: StudentProfile): MatchedOpportunity[] {
-  return matchOpportunities(student).slice(0, 3).map((m) => ({
+type Conflict = { examOrAssignment: string; date: string; conflictDescriptionMongolian: string };
+
+function matchedOpportunitiesForAnalysis(student: StudentProfile, free: WeeklyScheduleItem[]): MatchedOpportunity[] {
+  return matchOpportunities(student, free).slice(0, 3).map((m) => ({
     opportunityId: m.id,
     title: m.title,
     matchScore: m.matchScore,
@@ -164,13 +173,12 @@ function matchedOpportunitiesForAnalysis(student: StudentProfile): MatchedOpport
 }
 
 function detectConflicts(
-  student: StudentProfile,
+  busy: Map<Day, number>,
   assignments: Assignment[],
   exams: Exam[],
-): { examOrAssignment: string; date: string; conflictDescriptionMongolian: string }[] {
-  const busy = busyHoursByDay(student.id);
+): Conflict[] {
   const dayOf = (iso: string) => DAYS[new Date(iso + 'T12:00:00').getDay() === 0 ? 6 : new Date(iso + 'T12:00:00').getDay() - 1];
-  const conflicts: { examOrAssignment: string; date: string; conflictDescriptionMongolian: string }[] = [];
+  const conflicts: Conflict[] = [];
 
   for (const exam of exams.filter((e) => withinDays(e.examDate, 14))) {
     const day = dayOf(exam.examDate);
@@ -197,17 +205,66 @@ function detectConflicts(
   return conflicts;
 }
 
-async function gemmaEnrich(student: StudentProfile, ctx: {
+interface WorkloadFacts {
   score: number;
-  conflicts: { examOrAssignment: string; date: string }[];
-  completion: number;
-  exams: Exam[];
-}): Promise<Partial<{ aiSummaryMongolian: string; deadlineAdjustments: string; examPrepAdvice: string; progressSummaryMongolian: string }>> {
+  status: string;
+  stressRisk: 'Low' | 'Medium' | 'High';
+  totalActivityHours: number;
+  scheduledItems: number;
+  total: number;
+  completed: number;
+  completionPercentage: number;
+  pendingSoon: number;
+  upcomingExams: Exam[];
+  conflicts: Conflict[];
+}
+
+/**
+ * The scoring model on its own: pure, and readable without the report fields.
+ * The class index needs only this, so it must not pay for Gemma or matching.
+ */
+function workloadFacts(stored: WeeklyScheduleItem[], assignments: Assignment[], exams: Exam[]): WorkloadFacts {
+  const busy = busyHoursByDay(stored);
+  const totalActivityHours = [...busy.values()].reduce((a, b) => a + b, 0);
+  const pendingSoon = assignments.filter((a) => !a.isCompleted && withinDays(a.dueDate, 7)).length;
+  const upcomingExams = exams.filter((e) => withinDays(e.examDate, 14));
+  const total = assignments.length;
+  const completed = assignments.filter((a) => a.isCompleted).length;
+  const completionPercentage = total ? Math.round((completed / total) * 100) : 0;
+
+  let score =
+    1 +
+    Math.min(totalActivityHours / 3, 4) +
+    Math.min(pendingSoon * 0.9, 3) +
+    Math.min(upcomingExams.length, 2);
+  if (completionPercentage >= 80) score -= 0.5;
+  if (completionPercentage < 40) score += 1;
+  score = Math.round(Math.min(10, Math.max(1, score)) * 10) / 10;
+
+  return {
+    score,
+    status: statusFromScore(score),
+    stressRisk: stressFromScore(score),
+    totalActivityHours,
+    scheduledItems: stored.length,
+    total,
+    completed,
+    completionPercentage,
+    pendingSoon,
+    upcomingExams,
+    conflicts: detectConflicts(busy, assignments, exams),
+  };
+}
+
+const riskMn = (risk: 'Low' | 'Medium' | 'High', upper: boolean) =>
+  risk === 'High' ? (upper ? 'Өндөр' : 'өндөр') : risk === 'Medium' ? (upper ? 'Дунд' : 'дунд') : upper ? 'Бага' : 'бага';
+
+async function gemmaEnrich(student: StudentProfile, facts: WorkloadFacts): Promise<Partial<{ aiSummaryMongolian: string; deadlineAdjustments: string; examPrepAdvice: string; progressSummaryMongolian: string }>> {
   if (!gemmaEnabled) return {};
   const prompt = `Чи бол BalanceEd платформын AI туслах. Доорх мэдээлэлд үндэслэн Монгол хэлээр 4 хэсэг бүтээ. Зөвхөн JSON буцаа (markdown хэрэглэхгүй).
 Сурагч: ${student.name}, ${student.grade}, ${student.school}
-Ачааллын оноо (1-10): ${ctx.score}, гүйцэтгэл: ${ctx.completion}%, удахгүй шалгалт: ${ctx.exams.map((e) => `${e.subject} (${e.examDate})`).join(', ') || 'байхгүй'}
-Давхцал: ${ctx.conflicts.map((c) => `${c.examOrAssignment} ${c.date}`).join('; ') || 'байхгүй'}
+Ачааллын оноо (1-10): ${facts.score}, гүйцэтгэл: ${facts.completionPercentage}%, удахгүй шалгалт: ${facts.upcomingExams.map((e) => `${e.subject} (${e.examDate})`).join(', ') || 'байхгүй'}
+Давхцал: ${facts.conflicts.map((c) => `${c.examOrAssignment} ${c.date}`).join('; ') || 'байхгүй'}
 
 JSON түлхүүрүүд:
 "aiSummaryMongolian": эцэг эхэд зориулсан 2-3 өгүүлбэрийн эелдэг тойм,
@@ -225,74 +282,54 @@ JSON түлхүүрүүд:
 }
 
 export async function buildWorkloadAnalysis(student: StudentProfile) {
-  const assignments = db.assignments.find((a) => a.studentId === student.id);
-  const exams = db.exams.find((e) => e.studentId === student.id);
-  const weeklyItems = db.schedule.find((s) => s.studentId === student.id && !s.isFreeSlot);
-
-  const busy = busyHoursByDay(student.id);
-  const totalActivityHours = [...busy.values()].reduce((a, b) => a + b, 0);
-  const pendingSoon = assignments.filter((a) => !a.isCompleted && withinDays(a.dueDate, 7)).length;
-  const upcomingExams = exams.filter((e) => withinDays(e.examDate, 14));
-  const total = assignments.length;
-  const completed = assignments.filter((a) => a.isCompleted).length;
-  const completionPercentage = total ? Math.round((completed / total) * 100) : 0;
-
-  let score =
-    1 +
-    Math.min(totalActivityHours / 3, 4) +
-    Math.min(pendingSoon * 0.9, 3) +
-    Math.min(upcomingExams.length, 2);
-  if (completionPercentage >= 80) score -= 0.5;
-  if (completionPercentage < 40) score += 1;
-  score = Math.round(Math.min(10, Math.max(1, score)) * 10) / 10;
-
-  const stressRisk = stressFromScore(score);
-  const status = statusFromScore(score);
-  const conflicts = detectConflicts(student, assignments, exams);
-
-  const ai = await gemmaEnrich(student, { score, conflicts, completion: completionPercentage, exams: upcomingExams });
+  const stored = storedSchedule(student.id);
+  const assignments = db.assignments.byStudent(student.id);
+  const exams = db.exams.byStudent(student.id);
+  const facts = workloadFacts(stored, assignments, exams);
+  const free = freeSlotsFrom(student.id, stored);
+  const ai = await gemmaEnrich(student, facts);
 
   const aiSummaryMongolian =
     ai.aiSummaryMongolian ??
-    `${student.name} сурагчийн долоо хоногийн ачаалал ${score}/10 (${STATUS_MN[status] ?? status}) байна. Нийт ${totalActivityHours.toFixed(1)} цаг хичээлээс гадуурх үйл ажиллагаа, ${pendingSoon} гүйцэтгээгүй даалгавар, ${upcomingExams.length} шалгалт төлөвлөгдсөн. Стрессийн эрсдэл: ${stressRisk === 'High' ? 'Өндөр' : stressRisk === 'Medium' ? 'Дунд' : 'Бага'}. ${conflicts.length ? 'Хуваарьт давхцал илэрсэн тул зарим даалгаврын хугацааг хойшлуулахыг зөвлөж байна.' : 'Хуваарьт ноцтой давхцал алга.'}`;
+    `${student.name} сурагчийн долоо хоногийн ачаалал ${facts.score}/10 (${STATUS_MN[facts.status] ?? facts.status}) байна. Нийт ${facts.totalActivityHours.toFixed(1)} цаг хичээлээс гадуурх үйл ажиллагаа, ${facts.pendingSoon} гүйцэтгээгүй даалгавар, ${facts.upcomingExams.length} шалгалт төлөвлөгдсөн. Стрессийн эрсдэл: ${riskMn(facts.stressRisk, true)}. ${facts.conflicts.length ? 'Хуваарьт давхцал илэрсэн тул зарим даалгаврын хугацааг хойшлуулахыг зөвлөж байна.' : 'Хуваарьт ноцтой давхцал алга.'}`;
 
   const deadlineAdjustments =
     ai.deadlineAdjustments ??
-    (conflicts.length
-      ? `${conflicts[0].examOrAssignment} (${conflicts[0].date}) хугацааг хамгийн их ачаалалтай өдрөөс хойш хоёр хоног сунгахыг зөвлөж байна.`
+    (facts.conflicts.length
+      ? `${facts.conflicts[0].examOrAssignment} (${facts.conflicts[0].date}) хугацааг хамгийн их ачаалалтай өдрөөс хойш хоёр хоног сунгахыг зөвлөж байна.`
       : 'Одоогоор хугацаа сунгах шаардлагагүй — хуваарь тэнцвэртэй байна.');
 
   const examPrepAdvice =
     ai.examPrepAdvice ??
-    (upcomingExams.length
-      ? `${upcomingExams[0].subject} шалгалтад (${upcomingExams[0].examDate}) бэлтгэхийн тулд чөлөөт цагийн хэсгүүдийг 45 минутын блокт хувааж, шалгалтын өмнөх өдөр хүнд үйл ажиллагаа төлөвлөхөөс зайлсхий.`
+    (facts.upcomingExams.length
+      ? `${facts.upcomingExams[0].subject} шалгалтад (${facts.upcomingExams[0].examDate}) бэлтгэхийн тулд чөлөөт цагийн хэсгүүдийг 45 минутын блокт хувааж, шалгалтын өмнөх өдөр хүнд үйл ажиллагаа төлөвлөхөөс зайлсхий.`
       : 'Удахгүй шалгалт байхгүй тул тогтмол давталтаар сэдвүүдээ батжуулаарай.');
 
   const progressSummaryMongolian =
     ai.progressSummaryMongolian ??
-    `Таны хүүхэд ${total} даалгавраас ${completed}-г гүйцэтгэсэн (${completionPercentage}% биелэлт). ${upcomingExams.length ? `Удахгүй ${upcomingExams.map((e) => `${e.subject} (${e.examDate})`).join(', ')} шалгалт байна. ` : ''}Ачааллын оноо ${score}/10, стрессийн эрсдэл ${stressRisk === 'High' ? 'өндөр' : stressRisk === 'Medium' ? 'дунд' : 'бага'} түвшинд байна.`;
+    `Таны хүүхэд ${facts.total} даалгавраас ${facts.completed}-г гүйцэтгэсэн (${facts.completionPercentage}% биелэлт). ${facts.upcomingExams.length ? `Удахгүй ${facts.upcomingExams.map((e) => `${e.subject} (${e.examDate})`).join(', ')} шалгалт байна. ` : ''}Ачааллын оноо ${facts.score}/10, стрессийн эрсдэл ${riskMn(facts.stressRisk, false)} түвшинд байна.`;
 
   return {
     studentName: student.name,
     workloadAnalysis: {
-      workloadScore: score,
-      status,
-      stressRisk,
+      workloadScore: facts.score,
+      status: facts.status,
+      stressRisk: facts.stressRisk,
       aiSummaryMongolian,
     },
     academicProgress: {
-      totalAssignments: total,
-      completedAssignments: completed,
-      completionPercentage,
-      upcomingExamsCount: upcomingExams.length,
-      scheduleConflicts: conflicts,
+      totalAssignments: facts.total,
+      completedAssignments: facts.completed,
+      completionPercentage: facts.completionPercentage,
+      upcomingExamsCount: facts.upcomingExams.length,
+      scheduleConflicts: facts.conflicts,
     },
-    matchedOpportunities: matchedOpportunitiesForAnalysis(student),
+    matchedOpportunities: matchedOpportunitiesForAnalysis(student, free),
     teacherRecommendations: { deadlineAdjustments, examPrepAdvice },
     parentReport: { progressSummaryMongolian },
     weeklyScheduleSummary: {
-      totalActivityHours: Math.round(totalActivityHours * 10) / 10,
-      scheduledItems: weeklyItems.length,
+      totalActivityHours: Math.round(facts.totalActivityHours * 10) / 10,
+      scheduledItems: facts.scheduledItems,
     },
   };
 }
@@ -306,18 +343,23 @@ export interface WorkloadRow {
   stressRisk: 'Low' | 'Medium' | 'High';
 }
 
-export async function buildClassWorkload(students: StudentProfile[]): Promise<WorkloadRow[]> {
-  const rows: WorkloadRow[] = [];
-  for (const student of students) {
-    const a = await buildWorkloadAnalysis(student);
-    rows.push({
-      studentId: student.id,
-      studentName: student.name,
-      grade: student.grade,
-      workloadScore: a.workloadAnalysis.workloadScore,
-      status: a.workloadAnalysis.status,
-      stressRisk: a.workloadAnalysis.stressRisk,
-    });
-  }
-  return rows.sort((x, y) => y.workloadScore - x.workloadScore);
+/** Scores the whole class from the model alone — no report text, no matching, no network. */
+export function buildClassWorkload(students: StudentProfile[]): WorkloadRow[] {
+  return students
+    .map((student) => {
+      const facts = workloadFacts(
+        storedSchedule(student.id),
+        db.assignments.byStudent(student.id),
+        db.exams.byStudent(student.id),
+      );
+      return {
+        studentId: student.id,
+        studentName: student.name,
+        grade: student.grade,
+        workloadScore: facts.score,
+        status: facts.status,
+        stressRisk: facts.stressRisk,
+      };
+    })
+    .sort((x, y) => y.workloadScore - x.workloadScore);
 }

@@ -1,38 +1,60 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import type { ScryptOptions } from 'node:crypto';
+import { promisify } from 'node:util';
 
 export const SESSION_COOKIE = 'balanceed_session';
 export const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 const KEY_LEN = 64;
 const SCRYPT = { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 };
+// promisify only sees the 3-argument overload, so re-declare the options form.
+const scryptAsync = promisify(scrypt) as (
+  password: string | Buffer,
+  salt: string | Buffer,
+  keylen: number,
+  options: ScryptOptions,
+) => Promise<Buffer>;
+
+/**
+ * A salt fixed at process start, used to burn the same CPU when the account
+ * does not exist as a real check does, so login timing cannot enumerate users.
+ */
+const ABSENT_SALT = randomBytes(16);
 
 export function normaliseEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
 /** scrypt with a per-password salt; params are stored in the digest so they can be raised later. */
-export function hashPassword(password: string): string {
+export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const derived = scryptSync(password.normalize('NFKC'), salt, KEY_LEN, SCRYPT);
+  const derived = (await scryptAsync(password.normalize('NFKC'), salt, KEY_LEN, SCRYPT)) as Buffer;
   return ['scrypt', SCRYPT.N, SCRYPT.r, SCRYPT.p, salt.toString('base64'), derived.toString('base64')].join('$');
 }
 
-export function verifyPassword(password: string, stored: string): boolean {
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
   const parts = stored.split('$');
   if (parts.length !== 6 || parts[0] !== 'scrypt') return false;
   const expected = Buffer.from(parts[5], 'base64');
   if (expected.length !== KEY_LEN) return false;
   try {
-    const actual = scryptSync(
+    const actual = (await scryptAsync(
       password.normalize('NFKC'),
       Buffer.from(parts[4], 'base64'),
       KEY_LEN,
       { N: Number(parts[1]), r: Number(parts[2]), p: Number(parts[3]), maxmem: SCRYPT.maxmem },
-    );
+    )) as Buffer;
     return timingSafeEqual(actual, expected);
   } catch {
     return false;
   }
+}
+
+/** Hash a password, or burn the same time verifying a dummy when the account is missing. */
+export async function verifyOrPad(password: string, stored: string | undefined): Promise<boolean> {
+  if (stored) return verifyPassword(password, stored);
+  await scryptAsync(password.normalize('NFKC'), ABSENT_SALT, KEY_LEN, SCRYPT);
+  return false;
 }
 
 /** Only the digest of a random token is stored, so a leaked database cannot replay sessions. */
