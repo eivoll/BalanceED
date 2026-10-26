@@ -1,0 +1,180 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------- Design tokens (triplets so Tailwind alpha modifiers work) ---------- */
+:root {
+  --c-page: 248 250 252;
+  --c-surface: 255 255 255;
+  --c-ink: 15 23 42;
+  --c-muted: 100 116 139;
+  --c-line: 226 232 240;
+  --c-accent: 29 78 216;
+  --c-accent-hover: 30 64 175;
+  --c-accent2: 3 105 161;
+  --c-onaccent: 255 255 255;
+  --c-ok: 16 185 129;
+  --c-warn: 245 158 11;
+  --c-danger: 244 63 94;
+  --c-free: 236 253 245;
+  --c-busy: 241 245 249;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+}
+
+/* Default theme is dark; :root above stays as the light palette. */
+html.dark {
+  --c-page: 8 12 22;
+  --c-surface: 17 24 39;
+  --c-ink: 226 232 240;
+  --c-muted: 148 163 184;
+  --c-line: 41 55 79;
+  --c-accent: 96 165 250;
+  --c-accent-hover: 147 197 253;
+  --c-accent2: 56 189 248;
+  --c-onaccent: 4 14 30;
+  --c-ok: 52 211 153;
+  --c-warn: 251 191 36;
+  --c-danger: 251 113 133;
+  --c-free: 6 40 34;
+  --c-busy: 30 41 59;
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-page text-ink antialiased;
+    font-family: var(--font-ui);
+    background-image: radial-gradient(60rem 30rem at 110% -10%, rgb(var(--c-accent2) / 0.08), transparent),
+      radial-gradient(50rem 25rem at -10% 0%, rgb(var(--c-accent) / 0.07), transparent);
+    background-attachment: fixed;
+  }
+  /* Smooth global theme transitions */
+  body, .glass, .seg, input, select, button {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-line/80 bg-surface/80 shadow-card backdrop-blur-md;
+  }
+  .lift {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift;
+  }
+  .btn-grad {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-onaccent shadow-sm transition-all duration-200 hover:bg-accent-hover hover:shadow-lift active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-soft {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold text-ink transition-all duration-200 hover:border-accent/60 hover:bg-accent/5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-4 py-2 text-sm font-semibold text-danger transition-all duration-200 hover:bg-danger/20 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .field {
+    @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink outline-none transition-all duration-200 placeholder:text-muted/70 focus:border-accent focus:ring-4 focus:ring-accent/15;
+  }
+  .label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wide text-muted;
+  }
+  .seg {
+    @apply relative grid grid-cols-3 rounded-xl bg-line/60 p-1;
+  }
+  .seg-indicator {
+    @apply absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-lg bg-accent shadow-sm transition-transform duration-300 ease-out;
+  }
+  .seg-btn {
+    @apply relative z-10 rounded-lg px-4 py-1.5 text-sm font-semibold text-muted transition-colors duration-200 hover:text-ink;
+  }
+  .seg-btn.active {
+    @apply text-onaccent;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-medium text-muted;
+  }
+  .icon-toggle {
+    @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface/70 text-muted transition-all duration-200 hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent;
+  }
+  .mn-bubble {
+    @apply relative rounded-2xl rounded-tl-sm border border-accent/20 bg-accent/5 px-4 py-3 text-sm leading-relaxed text-ink;
+  }
+  .mn-bubble::before {
+    content: '';
+    @apply absolute -left-1.5 top-4 h-3 w-3 rotate-45 border-b border-l border-accent/20 bg-accent/5;
+  }
+  .brand-tile {
+    @apply flex shrink-0 items-center justify-center rounded-2xl bg-accent text-onaccent shadow-md;
+  }
+}
+
+/* ---------- Motion ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.free-shimmer {
+  background-image: linear-gradient(110deg, transparent 30%, rgb(var(--c-ok) / 0.14) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 3.2s linear infinite;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(120px) rotate(540deg); opacity: 0; }
+}
+.confetti-bit {
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  animation: confetti-fall 1.6s ease-in forwards;
+}
+
+@keyframes pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop { animation: pop-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Animated checkbox */
+.check-box {
+  @apply relative flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 border-line bg-surface transition-all duration-200;
+}
+.check-row-on .check-box {
+  @apply border-transparent bg-ok text-onaccent;
+}
+.check-mark {
+  stroke-dasharray: 20;
+  stroke-dashoffset: 20;
+  transition: stroke-dashoffset 0.25s ease-out 0.05s;
+}
+.check-row-on .check-mark { stroke-dashoffset: 0; }
+.done-slide {
+  @apply text-muted line-through decoration-2 transition-all duration-300;
+}
+
+/* Gauge + donut transitions */
+.gauge-arc, .donut-arc {
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Schedule grid */
+.sched-cell { @apply relative border-b border-r border-line/60 p-1 align-top; }
+.sched-free { @apply border-2 border-dashed border-ok/50 bg-free/70; }
+.sched-busy { @apply bg-busy; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
