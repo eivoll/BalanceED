@@ -40,8 +40,6 @@ export interface StudentProfile {
 
 export type Role = 'student' | 'parent' | 'teacher';
 
-export const ROLES: Role[] = ['student', 'parent', 'teacher'];
-
 export interface UserAccount {
   id: string;
   email: string;

@@ -1,7 +1,7 @@
 {
-  "name": "erxes-balanceed",
+  "name": "balanceed",
   "version": "0.1.0",
-  "description": "erxes BalanceEd — open-source EdTech plugin for erxes: student workload balancing, parent verification, academic progress tracking, Gemma-powered AI analytics, and opportunity matching.",
+  "description": "BalanceEd — standalone student workload balancing app: weekly schedule, parent verification, academic progress, AI analytics and opportunity matching.",
   "license": "MIT",
   "private": true,
   "type": "module",

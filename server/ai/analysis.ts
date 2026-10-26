@@ -204,7 +204,7 @@ async function gemmaEnrich(student: StudentProfile, ctx: {
   exams: Exam[];
 }): Promise<Partial<{ aiSummaryMongolian: string; deadlineAdjustments: string; examPrepAdvice: string; progressSummaryMongolian: string }>> {
   if (!gemmaEnabled) return {};
-  const prompt = `Чи бол erxes BalanceEd платформын AI туслах. Доорх мэдээлэлд үндэслэн Монгол хэлээр 4 хэсэг бүтээ. Зөвхөн JSON буцаа (markdown хэрэглэхгүй).
+  const prompt = `Чи бол BalanceEd платформын AI туслах. Доорх мэдээлэлд үндэслэн Монгол хэлээр 4 хэсэг бүтээ. Зөвхөн JSON буцаа (markdown хэрэглэхгүй).
 Сурагч: ${student.name}, ${student.grade}, ${student.school}
 Ачааллын оноо (1-10): ${ctx.score}, гүйцэтгэл: ${ctx.completion}%, удахгүй шалгалт: ${ctx.exams.map((e) => `${e.subject} (${e.examDate})`).join(', ') || 'байхгүй'}
 Давхцал: ${ctx.conflicts.map((c) => `${c.examOrAssignment} ${c.date}`).join('; ') || 'байхгүй'}
