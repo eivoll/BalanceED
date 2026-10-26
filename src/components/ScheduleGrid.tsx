@@ -25,10 +25,10 @@ export default function ScheduleGrid({
   return (
     <div>
       <div className="overflow-x-auto rounded-xl border border-line/70">
-        <table className="w-full min-w-[820px] border-collapse text-xs" aria-label="Долоо хоногийн хуваарь">
+        <table className="w-full min-w-[760px] table-fixed border-collapse text-xs" aria-label="Долоо хоногийн хуваарь">
           <thead>
             <tr className="bg-page/80">
-              <th className="w-14 border-b border-r border-line/60 px-2 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted">
+              <th className="w-12 border-b border-r border-line/60 px-1 py-2.5 text-[10px] font-bold uppercase tracking-widest text-muted">
                 Цаг
               </th>
               {DAYS.map((d) => (
@@ -57,7 +57,7 @@ export default function ScheduleGrid({
                   return (
                     <td
                       key={day}
-                      className={`sched-cell h-9 ${cell.isFreeSlot ? 'sched-free free-shimmer' : 'sched-busy'} ${!isStart ? 'border-t-0' : ''}`}
+                      className={`sched-cell h-9 ${cell.isFreeSlot ? 'sched-free' : 'sched-busy'} ${!isStart ? 'border-t-0' : ''}`}
                     >
                       {isStart && (
                         <div className="flex h-full items-start gap-1.5 px-1 pt-0.5">
@@ -66,10 +66,7 @@ export default function ScheduleGrid({
                           </span>
                           <div className="min-w-0 flex-1">
                             {cell.isFreeSlot ? (
-                              <span className="block truncate text-[10px] font-bold uppercase tracking-wide text-ok">
-                                Чөлөөт цаг
-                                <span className="ml-1 font-medium normal-case tracking-normal text-ok/80">{cell.timeSlot}</span>
-                              </span>
+                              <span className="block truncate text-[10px] tabular-nums text-ok/80">{cell.timeSlot}</span>
                             ) : (
                               <>
                                 <span className="block truncate text-[11px] font-semibold leading-tight">{cell.activity}</span>
@@ -99,7 +96,7 @@ export default function ScheduleGrid({
       </div>
       <div className="mt-3 flex flex-wrap gap-4 text-[11px] font-medium text-muted">
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-3 w-3 rounded border-2 border-dashed border-ok/60 bg-free" /> <Icon name="sparkles" size={13} /> Чөлөөт цаг (Free Slot)
+          <span className="h-3 w-3 rounded border border-ok/40 bg-free" /> <Icon name="sparkles" size={13} /> Чөлөөт цаг (Free Slot)
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="h-3 w-3 rounded bg-busy" /> <Icon name="pin" size={13} /> Хичээлээс гадуурх үйл ажиллагаа

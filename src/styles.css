@@ -49,12 +49,9 @@ html.dark {
   body {
     @apply bg-page text-ink antialiased;
     font-family: var(--font-ui);
-    background-image: radial-gradient(60rem 30rem at 110% -10%, rgb(var(--c-accent2) / 0.08), transparent),
-      radial-gradient(50rem 25rem at -10% 0%, rgb(var(--c-accent) / 0.07), transparent);
-    background-attachment: fixed;
   }
   /* Smooth global theme transitions */
-  body, .glass, .seg, input, select, button {
+  body, .glass, .card, .seg, input, select, button {
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
 }
@@ -62,6 +59,13 @@ html.dark {
 @layer components {
   .glass {
     @apply rounded-2xl border border-line/80 bg-surface/80 shadow-card backdrop-blur-md;
+  }
+  /* Inner items sit on a plain surface; only page sections get the glass treatment. */
+  .card {
+    @apply rounded-xl border border-line/80 bg-surface;
+  }
+  .eyebrow {
+    @apply text-[11px] font-bold uppercase tracking-widest;
   }
   .lift {
     @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lift;
@@ -97,11 +101,7 @@ html.dark {
     @apply inline-flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-surface/70 text-muted transition-all duration-200 hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent;
   }
   .mn-bubble {
-    @apply relative rounded-2xl rounded-tl-sm border border-accent/20 bg-accent/5 px-4 py-3 text-sm leading-relaxed text-ink;
-  }
-  .mn-bubble::before {
-    content: '';
-    @apply absolute -left-1.5 top-4 h-3 w-3 rotate-45 border-b border-l border-accent/20 bg-accent/5;
+    @apply relative rounded-xl border border-accent/20 bg-accent/5 px-4 py-3 text-sm leading-relaxed text-ink;
   }
   .brand-tile {
     @apply flex shrink-0 items-center justify-center rounded-2xl bg-accent text-onaccent shadow-md;
@@ -114,16 +114,6 @@ html.dark {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-rise { animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-.free-shimmer {
-  background-image: linear-gradient(110deg, transparent 30%, rgb(var(--c-ok) / 0.14) 50%, transparent 70%);
-  background-size: 200% 100%;
-  animation: shimmer 3.2s linear infinite;
-}
 
 @keyframes confetti-fall {
   0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
@@ -169,7 +159,7 @@ html.dark {
 
 /* Schedule grid */
 .sched-cell { @apply relative border-b border-r border-line/60 p-1 align-top; }
-.sched-free { @apply border-2 border-dashed border-ok/50 bg-free/70; }
+.sched-free { @apply bg-free/25; }
 .sched-busy { @apply bg-busy; }
 
 @media (prefers-reduced-motion: reduce) {

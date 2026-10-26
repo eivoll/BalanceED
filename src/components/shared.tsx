@@ -95,7 +95,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <section className={`glass lift p-5 ${className}`}>
+    <section className={`glass p-5 ${className}`}>
       {(title || actions) && (
         <header className="mb-4 flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -186,20 +186,14 @@ export function GaugeDial({ score }: { score: number }) {
 }
 
 /** Friendly AI coach avatar with a speech bubble. */
-export function CoachCard({ children, title = 'Gemma AI зөвлөх' }: { children: ReactNode; title?: string }) {
+export function CoachCard({ children, title = 'AI зөвлөгөө' }: { children: ReactNode; title?: string }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="relative shrink-0">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent text-onaccent shadow-md">
-          <Icon name="cpu" size={22} />
-        </div>
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-3 w-3">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-ok opacity-60" />
-          <span className="relative inline-flex h-3 w-3 rounded-full bg-ok" />
-        </span>
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-onaccent shadow-md">
+        <Icon name="cpu" size={22} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="mb-1 text-[11px] font-bold uppercase tracking-widest text-accent">{title}</p>
+        <p className="eyebrow mb-1 text-accent">{title}</p>
         <div className="mn-bubble">{children}</div>
       </div>
     </div>

@@ -32,16 +32,14 @@ export default function OpportunityHub({ items }: { items: OpportunityDTO[] }) {
           return (
             <article
               key={o.id}
-              className="lift animate-rise group relative overflow-hidden rounded-2xl border border-line/80 bg-surface shadow-card"
+              className="animate-rise group overflow-hidden rounded-2xl border border-line/80 bg-surface"
               style={{ animationDelay: `${idx * 60}ms` }}
             >
-              <div className="relative flex h-16 items-center bg-accent px-4">
-                <span className="rounded-full bg-onaccent/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-onaccent backdrop-blur-sm">
-                  {cat.tag}
+              <div className="flex items-center gap-3 border-b border-line/70 px-4 py-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent" aria-hidden>
+                  <Icon name={cat.icon} size={18} />
                 </span>
-                <span className="ml-auto flex h-11 w-11 items-center justify-center rounded-2xl border-4 border-surface bg-surface text-accent shadow-md">
-                  <Icon name={cat.icon} size={22} />
-                </span>
+                <span className="eyebrow text-muted">{cat.tag}</span>
               </div>
 
               <div className="px-4 pb-4 pt-4">
@@ -76,7 +74,7 @@ export default function OpportunityHub({ items }: { items: OpportunityDTO[] }) {
                   className={`mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all duration-200 active:scale-95 ${
                     isJoined
                       ? 'border border-ok/40 bg-ok/10 text-ok'
-                      : 'bg-accent text-onaccent shadow-sm hover:bg-accent-hover hover:shadow-lift'
+                      : 'border border-line bg-page/60 text-ink hover:border-accent/50 hover:bg-accent/10 hover:text-accent'
                   }`}
                   onClick={() => {
                     if (isJoined) return;

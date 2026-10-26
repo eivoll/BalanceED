@@ -71,7 +71,7 @@ export default function TeacherView({
         <>
           <Card
             title="Ачааллын индекс — анги"
-            subtitle="Gemma AI-ийн ачааллын оноо (1–10) · мөр дээр дарж сурагч сонгоно"
+            subtitle="AI-ийн ачааллын оноо (1–10) · мөр дээр дарж сурагч сонгоно"
           >
             <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
               {rows.map((r, i) => (
@@ -103,7 +103,7 @@ export default function TeacherView({
           </Card>
 
           {analysis && (
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5">
               <Card title={`AI зөвлөмж — ${analysis.studentName}`} subtitle="Давхцал ба хугацааны шийдвэр гаргахад туслах саналууд">
                 <CoachCard>
                   <p className="inline-flex items-center gap-2 font-semibold"><Icon name="alert" size={15} /> Хугацаа сунгах санал:</p>
@@ -139,7 +139,7 @@ export default function TeacherView({
       <Card title="Боломжуудын жагсаалт" subtitle="Нийтлэгдсэн боломжууд">
         <ul className="grid grid-cols-1 gap-2">
           {opps.map((o) => (
-            <li key={o.id} className="lift flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3">
+            <li key={o.id} className="card flex flex-wrap items-center gap-3 px-4 py-3">
               <Pill tone={o.level === 'Global' ? 'good' : o.level === 'National' ? 'info' : 'neutral'}>{LEVEL_MN[o.level] ?? o.level}</Pill>
               <strong className="text-sm">{o.title}</strong>
               <span className="ml-auto text-xs font-medium text-muted">
@@ -280,7 +280,7 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
         <div>
           <span className="label">Хамрах хүрээ</span>
           <select className="field" value={level} onChange={(e) => setLevel(e.target.value)}>
-            {LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+            {LEVELS.map((l) => <option key={l} value={l}>{LEVEL_MN[l] ?? l}</option>)}
           </select>
         </div>
       </div>

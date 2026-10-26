@@ -116,7 +116,7 @@ export default function AssignmentsPanel({
       <Card className="lg:col-span-3" title="Шалгалтын хуваарь" subtitle="Багшийн товлосон шалгалтууд">
         <ul className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           {exams.map((e) => (
-            <li key={e.id} className="lift flex items-center gap-3 rounded-xl border border-line bg-surface p-3.5">
+            <li key={e.id} className="card flex items-center gap-3 p-3.5">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-warn/15 text-warn shadow-sm">
                 <Icon name="clipboard" size={20} />
               </span>

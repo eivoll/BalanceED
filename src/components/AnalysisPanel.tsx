@@ -9,7 +9,7 @@ export default function AnalysisPanel({ analysis }: { analysis: AnalysisDTO }) {
 
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-      <Card title="Ачааллын үнэлгээ" subtitle="Gemma AI-ийн долоо хоногийн үнэлгээ">
+      <Card title="Ачааллын үнэлгээ" subtitle="AI-ийн долоо хоногийн үнэлгээ">
         <div className="flex flex-wrap items-center gap-6">
           <GaugeDial score={wl.workloadScore} />
           <div className="grid grid-cols-1 gap-2">

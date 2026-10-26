@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { A, type AuthUserDTO } from '../api';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 import { StatusIcon } from './shared';
 
-const DEMO_ACCOUNTS: { email: string; role: string; who: string }[] = [
-  { email: 'teacher@demo.mn', role: 'Багш', who: 'ангийн ачаалал, даалгавар, сурагч нэмэх' },
-  { email: 'student@demo.mn', role: 'Сурагч', who: 'хуваарь, даалгавар, About Me' },
-  { email: 'parent@demo.mn', role: 'Эцэг эх', who: 'хуваарь баталгаажуулах, дэвшил' },
+const DEMO_ACCOUNTS: { email: string; role: string; who: string; icon: IconName }[] = [
+  { email: 'teacher@demo.mn', role: 'Багш', who: 'ангийн ачаалал, даалгавар, сурагч нэмэх', icon: 'clipboard' },
+  { email: 'student@demo.mn', role: 'Сурагч', who: 'хуваарь, даалгавар, About Me', icon: 'book' },
+  { email: 'parent@demo.mn', role: 'Эцэг эх', who: 'хуваарь баталгаажуулах, дэвшил', icon: 'heart' },
 ];
 
 export default function Landing({ onSignedIn }: { onSignedIn: (user: AuthUserDTO) => void }) {
@@ -31,33 +31,55 @@ export default function Landing({ onSignedIn }: { onSignedIn: (user: AuthUserDTO
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10">
-      <section className="glass p-6 sm:p-8">
-        <p className="text-[11px] font-bold uppercase tracking-widest text-accent">Тэнцвэртэй сургалт</p>
-        <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight sm:text-3xl">
+    <div className="grid grid-cols-1 items-start gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:gap-12">
+      <section className="px-1 py-2">
+        <p className="eyebrow text-accent">Тэнцвэртэй сургалт</p>
+        <h2 className="mt-3 max-w-[16ch] text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl">
           Сурагчийн долоо хоногийг хэн хянаж байна вэ?
         </h2>
-        <p className="mt-3 text-sm leading-relaxed text-muted">
+        <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted">
           BalanceEd хичээл, спорт, ажил хөдөлмөр, ур чадварын боломжуудыг нэг долоо хоногийн
           хуваарьт цуглуулж, ачааллын индекс, давхцал, эцэг эхийн зөвшөөрлийг нэг дор харуулна.
         </p>
-        <ul className="mt-6 grid grid-cols-1 gap-3">
+
+        <ul className="mt-8 grid gap-2">
           {DEMO_ACCOUNTS.map((a) => (
-            <li key={a.email} className="rounded-xl border border-line bg-surface px-4 py-3">
-              <p className="text-sm font-bold">{a.role}</p>
-              <p className="mt-0.5 text-xs leading-relaxed text-muted">{a.who}</p>
+            <li key={a.email}>
+              <button
+                type="button"
+                className="card group flex w-full items-center gap-3 px-4 py-3 text-left transition-all duration-150 hover:border-accent/60 hover:bg-accent/5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                onClick={() => {
+                  setEmail(a.email);
+                  setPassword('Demo!2026');
+                  setError('');
+                }}
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent" aria-hidden>
+                  <Icon name={a.icon} size={17} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold">{a.role}</span>
+                  <span className="block truncate text-xs text-muted">{a.who}</span>
+                </span>
+                <span className="hidden shrink-0 font-mono text-[11px] text-muted sm:block">{a.email}</span>
+                <Icon name="arrowRight" size={15} className="shrink-0 text-muted transition-transform duration-150 group-hover:translate-x-0.5" />
+              </button>
             </li>
           ))}
         </ul>
+        <p className="mt-3 text-[11px] leading-relaxed text-muted">
+          Эдгээр нь зөвхөн демо бүртгэл — дээр нь дарбал талбарууд автоматаар бөглөгдөнө.
+        </p>
       </section>
 
-      <section className="glass h-fit p-6 sm:p-8">
+      <section className="glass p-6 sm:p-8">
         <h2 className="text-lg font-extrabold tracking-tight">Нэвтрэх</h2>
         <p className="mt-1 text-xs text-muted">И-мэйл болон нууц үгээрээ нэвтэрнэ үү.</p>
         <form className="mt-5 grid grid-cols-1 gap-3" onSubmit={submit}>
           <div>
-            <span className="label">И-мэйл</span>
+            <label className="label" htmlFor="login-email">И-мэйл</label>
             <input
+              id="login-email"
               className="field"
               type="email"
               autoComplete="username"
@@ -67,8 +89,9 @@ export default function Landing({ onSignedIn }: { onSignedIn: (user: AuthUserDTO
             />
           </div>
           <div>
-            <span className="label">Нууц үг</span>
+            <label className="label" htmlFor="login-password">Нууц үг</label>
             <input
+              id="login-password"
               className="field"
               type="password"
               autoComplete="current-password"
@@ -86,32 +109,9 @@ export default function Landing({ onSignedIn }: { onSignedIn: (user: AuthUserDTO
             {busy ? 'Шалгаж байна…' : <><Icon name="arrowRight" size={16} /> Нэвтрэх</>}
           </button>
         </form>
-
-        <div className="mt-6 border-t border-line/70 pt-4">
-          <p className="text-[11px] font-bold uppercase tracking-widest text-muted">
-            Туршилтын бүртгэл · нууц үг <code className="rounded bg-page px-1.5 py-0.5 font-mono text-[11px] normal-case tracking-normal">Demo!2026</code>
-          </p>
-          <ul className="mt-2 grid grid-cols-1 gap-1.5">
-            {DEMO_ACCOUNTS.map((a) => (
-              <li key={a.email}>
-                <button
-                  type="button"
-                  className="w-full rounded-lg border border-line bg-surface/60 px-3 py-2 text-left text-xs font-semibold transition-all duration-150 hover:border-accent hover:shadow-sm"
-                  onClick={() => {
-                    setEmail(a.email);
-                    setPassword('Demo!2026');
-                    setError('');
-                  }}
-                >
-                  {a.role} — <span className="font-mono font-normal text-muted">{a.email}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          <p className="mt-3 text-[11px] leading-relaxed text-muted">
-            Эдгээр нь зөвхөн демо бөгөөд нэвтэрсний дараа нууц үгээ солиорой.
-          </p>
-        </div>
+        <p className="mt-4 border-t border-line/70 pt-3 text-[11px] text-muted">
+          Демо бүртгэлийн нууц үг: <code className="rounded bg-page px-1.5 py-0.5 font-mono text-[11px]">Demo!2026</code>
+        </p>
       </section>
     </div>
   );

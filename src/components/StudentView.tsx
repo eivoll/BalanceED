@@ -62,8 +62,7 @@ export default function StudentView({
   return (
     <div className="grid grid-cols-1 gap-5">
       {/* Hero */}
-      <section className="glass relative overflow-hidden p-5">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-accent/10 blur-2xl" aria-hidden />
+      <section className="glass p-5">
         <div className="relative flex flex-wrap items-center gap-x-8 gap-y-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">

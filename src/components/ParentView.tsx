@@ -98,7 +98,7 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
               <span className="font-medium">{analysis.parentReport.progressSummaryMongolian}</span>
             </CoachCard>
             <div className="mt-4 rounded-xl bg-page/80 p-3.5 text-xs leading-relaxed text-muted">
-              <p className="mb-1 font-bold uppercase tracking-widest text-accent">AI зөвлөмж</p>
+              <p className="eyebrow mb-1 text-accent">AI зөвлөмж</p>
               {analysis.workloadAnalysis.aiSummaryMongolian}
             </div>
           </Card>

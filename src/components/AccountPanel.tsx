@@ -64,7 +64,7 @@ export default function AccountPanel({
     >
       <p className="text-sm font-bold">{user.displayName}</p>
       <p className="mt-0.5 truncate text-xs text-muted">{user.email}</p>
-      <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-accent">
+      <p className="eyebrow mt-1 text-accent">
         {ROLE_MN[user.role] ?? user.role}
       </p>
 
