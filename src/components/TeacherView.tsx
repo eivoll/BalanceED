@@ -289,7 +289,7 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <span className="label">Гарчиг</span>
-          <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Зуны кодичлолын сургалт — удирдагч" />
+          <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Зуны кодчилолын сургалт — удирдагч" />
         </div>
         <div>
           <span className="label">Зохион байгуулагч</span>
@@ -307,7 +307,7 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
         </div>
         <div className="sm:col-span-2">
           <span className="label">Шаардлагатай ур чадвар</span>
-          <input className="field" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Питон, илтгэл тавих" />
+          <input className="field" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Python, илтгэл тавих" />
         </div>
         <div>
           <span className="label">Газар</span>

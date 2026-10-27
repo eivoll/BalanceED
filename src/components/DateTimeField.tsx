@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { Icon } from './icons';
 
 const WEEK_SHORT = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ни'];
@@ -42,7 +43,10 @@ function useDismiss(root: RefObject<HTMLElement | null>, trigger: RefObject<HTML
   useEffect(() => {
     if (!open) return;
     const onPointer = (e: PointerEvent) => {
-      if (root.current && !root.current.contains(e.target as Node)) close();
+      const target = e.target as Element;
+      // The popover is portalled out of the trigger, so both count as "inside".
+      if (root.current?.contains(target) || trigger.current?.contains(target) || target.closest('[data-popover]')) return;
+      close();
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
@@ -60,20 +64,42 @@ function useDismiss(root: RefObject<HTMLElement | null>, trigger: RefObject<HTML
 }
 
 /**
- * The panel hangs under its trigger and flips to a right anchor when the field
- * sits near the edge of a narrow screen, so a phone never gets a cut-off calendar.
+ * Popovers live in a portal: every page card is `.glass`, and `backdrop-filter`
+ * gives it a stacking context, so an in-place popover would paint under the next card.
+ * The panel tracks its trigger, clamps to the viewport and flips above when there is no room below.
  */
-function Frame({ children, width = 280 }: { children: ReactNode; width?: number }) {
+function Frame({ anchor, children }: { anchor: RefObject<HTMLElement | null>; children: ReactNode }) {
   const host = useRef<HTMLDivElement>(null);
-  const [align, setAlign] = useState<'left' | 'right'>('left');
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
   useLayoutEffect(() => {
-    const box = host.current?.parentElement?.getBoundingClientRect();
-    if (box) setAlign(box.left + width > window.innerWidth - 12 ? 'right' : 'left');
-  }, [width]);
-  return (
-    <div ref={host} className={`animate-pop absolute top-[calc(100%+0.375rem)] z-50 ${align === 'right' ? 'right-0' : 'left-0'}`}>
+    const place = () => {
+      const box = anchor.current?.getBoundingClientRect();
+      const el = host.current;
+      if (!box || !el) return;
+      const { offsetWidth: w, offsetHeight: h } = el;
+      const left = Math.min(Math.max(box.left, 12), Math.max(12, window.innerWidth - w - 12));
+      const below = box.bottom + 6;
+      const top = below + h > window.innerHeight - 12 ? Math.max(12, box.top - h - 6) : below;
+      setPos((p) => (p && Math.abs(p.left - left) < 0.5 && Math.abs(p.top - top) < 0.5 ? p : { left, top }));
+    };
+    place();
+    const ro = new ResizeObserver(place);
+    if (host.current) ro.observe(host.current);
+    window.addEventListener('resize', place);
+    window.addEventListener('scroll', place, true);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', place);
+      window.removeEventListener('scroll', place, true);
+    };
+  }, [anchor]);
+
+  return createPortal(
+    <div ref={host} data-popover className="animate-pop fixed z-[70]" style={{ left: pos?.left ?? -9999, top: pos?.top ?? -9999 }}>
       {children}
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -104,6 +130,7 @@ export function DateField({
     return { y: base.y, m: base.m };
   });
   const [cursor, setCursor] = useState(() => picked ?? today);
+  const anchor = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const grid = useRef<HTMLDivElement>(null);
@@ -175,7 +202,7 @@ export function DateField({
   const isToday = (d: number) => today.y === view.y && today.m === view.m && today.d === d;
 
   return (
-    <div className={`relative ${className}`}>
+    <div ref={anchor} className={`relative ${className}`}>
       {label && <span className="label">{label}</span>}
       <button
         ref={trigger}
@@ -195,7 +222,7 @@ export function DateField({
       </button>
 
       {open && (
-        <Frame>
+        <Frame anchor={anchor}>
           <div ref={root} role="dialog" aria-label="Огноо сонгох" className={`${shell} w-[17.5rem]`}>
             <div className="mb-2 flex items-center justify-between gap-2">
               <button
@@ -303,6 +330,7 @@ export function TimeField({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const anchor = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   useDismiss(root, trigger, open, () => setOpen(false));
@@ -318,7 +346,7 @@ export function TimeField({
   }
 
   return (
-    <div className={`relative ${className}`}>
+    <div ref={anchor} className={`relative ${className}`}>
       {label && <span className="label">{label}</span>}
       <button
         ref={trigger}
@@ -334,7 +362,7 @@ export function TimeField({
       </button>
 
       {open && (
-        <Frame>
+        <Frame anchor={anchor}>
           <div ref={root} role="dialog" aria-label="Цаг сонгох" className={`${shell} w-[17.5rem]`}>
             <div className="mb-2 flex items-baseline justify-between">
               <p className="eyebrow text-muted">Цаг</p>
@@ -381,7 +409,7 @@ export function TimeField({
                 trigger.current?.focus();
               }}
             >
-              Сонгосон цаагаа ашиглах
+              Сонгосон цагийг батлах
             </button>
           </div>
         </Frame>
