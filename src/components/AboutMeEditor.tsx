@@ -25,15 +25,11 @@ function TagEditor({
   const [draft, setDraft] = useState('');
   const voice = useVoiceInput((text) => add(text.trim()));
 
-  const toneCls =
-    tone === 'interest'
-      ? 'border-accent/40 bg-accent/10 text-accent'
-      : tone === 'skill'
-        ? 'border-accent2/40 bg-accent2/10 text-accent2'
-        : 'border-ok/40 bg-ok/10 text-ok';
+  // The icon and the heading above already say which group a chip belongs to.
+  const toneCls = 'border-accent/40 bg-accent/10 text-accent';
 
   function add(raw: string) {
-    const value = raw && tone === 'interest' && !raw.startsWith('#') ? `#${raw.replace(/\s+/g, '')}` : raw;
+    const value = raw.replace(/\s+/g, ' ').trim();
     if (!value || tags.includes(value)) return;
     const next = [...tags, value];
     setTags(next);
@@ -111,7 +107,7 @@ export default function AboutMeEditor({ student, onSaved }: { student: StudentDT
   return (
     <Card title="Миний танилцуулга" subtitle="Сонирхол · ур чадвар · зорилго — AI эдгээрт үндэслэн боломж санал болгоно">
       <div className="grid grid-cols-1 gap-4">
-        <TagEditor label="Сонирхол" placeholder="#Дизайн гэж бичээд Enter" icon="heart" tone="interest" initial={student.aboutMe.interests} onChange={setInterests} />
+        <TagEditor label="Сонирхол" placeholder="Дизайн гэж бичээд Enter" icon="heart" tone="interest" initial={student.aboutMe.interests} onChange={setInterests} />
         <TagEditor label="Ур чадвар" placeholder="График дизайн, багийн ажил…" icon="star" tone="skill" initial={student.aboutMe.skills} onChange={setSkills} />
         <TagEditor label="Мэргэжлийн зорилго" placeholder="Дизайнер, инженер…" icon="target" tone="goal" initial={student.aboutMe.careerGoals} onChange={setGoals} />
       </div>

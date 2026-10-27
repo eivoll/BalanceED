@@ -81,7 +81,7 @@ export default function StudentView({
               )}
             </div>
             <p className="mt-1 text-xs font-medium text-muted">
-              {student.grade} · {student.school} · {student.aboutMe.interests.slice(0, 3).join(' ')}
+              {student.grade} · {student.school} · {student.aboutMe.interests.slice(0, 3).join(', ')}
             </p>
           </div>
 
