@@ -283,6 +283,7 @@ async function buildStudent(args: StudentInput, teacherId: string | null): Promi
   const grade = parseGrade(args.grade);
   // Everything is checked before the first row lands, so a rejected form never leaves half a student.
   const hours = timetableEntries(args.schoolHours ?? undefined);
+  if (!hours.length) throw new UserInputError('Дор хаяж нэг өдрийн хичээлийн цагаа заана уу.');
 
   const student = db.students.insert(
     {
@@ -510,6 +511,7 @@ export const resolvers = {
     ) => {
       authorize(ctx, studentId, 'edit');
       const clean = timetableEntries(entries);
+      if (!clean.length) throw new UserInputError('Дор хаяж нэг өдрийн хичээлийн цагаа заана уу.');
 
       // The timetable may not sit on top of an activity that is already booked.
       const booked = db.schedule.byStudent(studentId).filter((i) => !i.isFreeSlot);
