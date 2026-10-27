@@ -1,5 +1,5 @@
 import { AuthenticationError, ForbiddenError, UserInputError } from './errors.js';
-import { db } from './db.js';
+import { db, normaliseJoinCode, uniqueJoinCode } from './db.js';
 import {
   buildClassWorkload,
   buildWorkloadAnalysis,
@@ -24,6 +24,12 @@ import type {
 
 export interface Ctx {
   user: UserAccount | null;
+  /**
+   * Mutable view of the caller's session. Field resolvers receive a snapshot of this
+   * context object, so login/signup publish the session they just opened through this
+   * shared box instead of a top-level property the snapshot would freeze.
+   */
+  session: { userId: string | null };
   /** Issues a fresh session token for this account and sends it as a cookie. */
   openSession(userId: string): void;
   /** Revokes the caller's session and expires the cookie. */
@@ -290,6 +296,7 @@ async function buildStudent(args: StudentInput, teacherId: string | null): Promi
       },
       parentVerification: { isScheduleApproved: false },
       teacherId: teacherId ?? undefined,
+      joinCode: uniqueJoinCode(),
     },
     'stu',
   );
@@ -335,6 +342,10 @@ export const resolvers = {
 
   StudentProfile: {
     hasParent: (student: StudentProfile) => db.parentLinks.parentsOf(student.id).length > 0,
+    hasTeacher: (student: StudentProfile) => Boolean(student.teacherId),
+    // The code lets whoever holds it attach to this student, so only the student may read it.
+    joinCode: (student: StudentProfile, _: unknown, ctx: Ctx) =>
+      ctx.session.userId && db.users.byStudent(student.id)?.id === ctx.session.userId ? student.joinCode : null,
   },
 
   Query: {
@@ -434,14 +445,8 @@ export const resolvers = {
       db.schoolHours.dropForStudent(id);
       db.signups.dropForStudent(id);
       if (account) db.users.remove(account.id);
-      // A parent account created for this student only is useless once the link is gone.
-      for (const parentId of parentIds) {
-        if (db.parentLinks.childrenOf(parentId).length > 0) continue;
-        const parent = db.users.byId(parentId);
-        if (parent?.role !== 'parent') continue;
-        db.sessions.dropAllForUser(parentId);
-        db.users.remove(parentId);
-      }
+      // Parent accounts stay: the family keeps its login and can re-link later,
+      // either through a join code or by signing up a new child with the same e-mail.
       return db.students.remove(id);
     },
 
@@ -531,6 +536,33 @@ export const resolvers = {
           approvedDate: approved ? new Date().toISOString().slice(0, 10) : undefined,
         },
       })!;
+    },
+
+    joinTeacher: (_: unknown, { code }: { code: string }, ctx: Ctx) => {
+      const teacher = currentUser(ctx);
+      if (teacher.role !== 'teacher') throw new ForbiddenError(DENIAL.teach);
+      const student = db.students.byJoinCode(normaliseJoinCode(code));
+      if (!student) throw new UserInputError('Ийм холбох кодтой сурагч олдсонгүй.');
+      if (student.teacherId && student.teacherId !== teacher.id) {
+        throw new UserInputError('Энэ сурагч аль хэдийн өөр багшийн жагсаалтад байна.');
+      }
+      if (!student.teacherId) db.students.update(student.id, { teacherId: teacher.id });
+      return db.students.byId(student.id)!;
+    },
+
+    linkParent: (_: unknown, { code }: { code: string }, ctx: Ctx) => {
+      const parent = currentUser(ctx);
+      if (parent.role !== 'parent') throw new ForbiddenError('Зөвхөн эцэг эх хүүхэдтэйгээ холбогдох боломжтой.');
+      if (db.parentLinks.childrenOf(parent.id).length > 0) {
+        throw new UserInputError('Танд аль хэдийн хүүхэд холбогдсон байна.');
+      }
+      const student = db.students.byJoinCode(normaliseJoinCode(code));
+      if (!student) throw new UserInputError('Ийм холбох кодтой сурагч олдсонгүй.');
+      if (db.parentLinks.parentsOf(student.id).length > 0) {
+        throw new UserInputError('Энэ сурагчид эцэг эх аль хэдийн холбогдсон байна.');
+      }
+      db.parentLinks.add(parent.id, student.id);
+      return student;
     },
 
     toggleAssignment: (_: unknown, { id, isCompleted }: { id: string; isCompleted: boolean }, ctx: Ctx) => {

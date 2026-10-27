@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { A, type AuthUserDTO } from './api';
+import { A, attempt, M, type AuthUserDTO } from './api';
 import { ThemeProvider, useTheme } from './theme';
 import AccountPanel from './components/AccountPanel';
 import Landing from './components/Landing';
@@ -7,7 +7,7 @@ import StudentView from './components/StudentView';
 import ParentView from './components/ParentView';
 import TeacherView from './components/TeacherView';
 import { BrandMark, Icon } from './components/icons';
-import { Pill, StatusIcon } from './components/shared';
+import { CodeLinkForm, Pill, StatusIcon } from './components/shared';
 
 const ROLE_MN: Record<string, string> = { student: 'Сурагч', parent: 'Эцэг эх', teacher: 'Багш' };
 
@@ -148,9 +148,14 @@ function Shell() {
           {user.role === 'parent' && !students.length && (
             <div className="glass p-8 text-center text-sm text-muted">
               <p>Танд одоогоор холбогдсон хүүхэд алга.</p>
-              <p className="mt-1.5 text-xs leading-relaxed">
-                Хүүхдийн хуваарь энд харагдахын тулд бүртгэлийн үед эцэг эхийн и-мэйл хаяг заасан байх шаардлагатай.
-              </p>
+              <div className="mx-auto mt-5 max-w-sm text-left">
+                <CodeLinkForm
+                  hint="Хүүхэд өөрийн хэсгээс харсан холбох кодоо танд хэлэхэд хуваарь нь энд харагдна."
+                  button="Холбох"
+                  submit={(code) => attempt(() => M.linkParent(code))}
+                  onDone={refresh}
+                />
+              </div>
             </div>
           )}
         </main>

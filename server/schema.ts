@@ -84,6 +84,9 @@ export const typeDefs = /* GraphQL */ `
     parentVerification: ParentVerification!
     """False when the student registered without a parent, so nothing is being waited on."""
     hasParent: Boolean!
+    hasTeacher: Boolean!
+    """Code the student hands to a teacher or parent so they can attach; null unless you are the student."""
+    joinCode: String
   }
 
   type WeeklyScheduleItem {
@@ -257,6 +260,10 @@ export const typeDefs = /* GraphQL */ `
     """Replaces the whole week; an empty list clears the timetable."""
     setSchoolHours(studentId: ID!, entries: [SchoolHourInput!]!): [SchoolHour!]!
     approveSchedule(studentId: ID!, approved: Boolean!): StudentProfile!
+    """A teacher adopts a self-signed student by the code the student shows."""
+    joinTeacher(code: String!): StudentProfile!
+    """A parent with no linked child connects to a student by the code the student shows."""
+    linkParent(code: String!): StudentProfile!
     toggleAssignment(id: ID!, isCompleted: Boolean!): Assignment
     createAssignment(studentId: ID!, title: String!, subject: String!, dueDate: String!): Assignment!
     deleteAssignment(id: ID!): Boolean!

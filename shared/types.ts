@@ -36,6 +36,7 @@ export interface StudentProfile {
   aboutMe: AboutMe;
   parentVerification: ParentVerification;
   teacherId?: string;
+  joinCode: string;
 }
 
 export type Role = 'student' | 'parent' | 'teacher';

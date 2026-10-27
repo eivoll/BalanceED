@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync } from 'node:fs';
+import { randomInt } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
@@ -54,7 +55,8 @@ sqlite.exec(`
     about_me TEXT NOT NULL,
     is_schedule_approved INTEGER NOT NULL,
     approved_date TEXT,
-    teacher_id TEXT
+    teacher_id TEXT,
+    join_code TEXT NOT NULL DEFAULT ''
   );
   CREATE TABLE IF NOT EXISTS schedule_items (
     id TEXT PRIMARY KEY,
@@ -148,6 +150,10 @@ if (!hasColumn('opportunities', 'description')) sqlite.exec("ALTER TABLE opportu
 if (!hasColumn('opportunities', 'location')) sqlite.exec("ALTER TABLE opportunities ADD COLUMN location TEXT NOT NULL DEFAULT ''");
 if (!hasColumn('opportunities', 'deadline')) sqlite.exec("ALTER TABLE opportunities ADD COLUMN deadline TEXT NOT NULL DEFAULT ''");
 if (!hasColumn('opportunities', 'capacity')) sqlite.exec('ALTER TABLE opportunities ADD COLUMN capacity INTEGER NOT NULL DEFAULT 0');
+// Students who existed before join codes need one minted below, once the collection exists.
+if (!hasColumn('students', 'join_code')) sqlite.exec("ALTER TABLE students ADD COLUMN join_code TEXT NOT NULL DEFAULT ''");
+// The index lives here, not in the DDL block above: on old databases the column only exists after the ALTER.
+sqlite.exec('CREATE INDEX IF NOT EXISTS ix_students_join_code ON students (join_code);');
 
 /**
  * SQLite-backed table with the same surface the resolvers and analytics use.
@@ -261,7 +267,7 @@ const parse = <V>(value: SqlValue, fallback: V): V => {
 const flag = (value: boolean): number => (value ? 1 : 0);
 const text = (value: SqlValue): string => String(value ?? '');
 
-const STUDENT_COLS = ['id', 'name', 'grade', 'school', 'about_me', 'is_schedule_approved', 'approved_date', 'teacher_id'] as const;
+const STUDENT_COLS = ['id', 'name', 'grade', 'school', 'about_me', 'is_schedule_approved', 'approved_date', 'teacher_id', 'join_code'] as const;
 const studentFromRow = (r: Row): StudentProfile => ({
   id: text(r.id),
   name: text(r.name),
@@ -273,10 +279,14 @@ const studentFromRow = (r: Row): StudentProfile => ({
     ...(r.approved_date == null ? {} : { approvedDate: text(r.approved_date) }),
   },
   ...(r.teacher_id == null ? {} : { teacherId: text(r.teacher_id) }),
+  joinCode: text(r.join_code),
 });
 
 const stmtStudentsByTeacher = sqlite.prepare(
   `SELECT ${STUDENT_COLS.map((c) => `"${c}"`).join(', ')} FROM students WHERE teacher_id = ? ORDER BY rowid`,
+);
+const stmtStudentsByCode = sqlite.prepare(
+  `SELECT ${STUDENT_COLS.map((c) => `"${c}"`).join(', ')} FROM students WHERE join_code = ?`,
 );
 
 const students = Object.assign(
@@ -292,6 +302,7 @@ const students = Object.assign(
       flag(e.parentVerification.isScheduleApproved),
       e.parentVerification.approvedDate ?? null,
       e.teacherId ?? null,
+      e.joinCode,
     ],
     studentFromRow,
   ),
@@ -299,8 +310,29 @@ const students = Object.assign(
     byTeacher(teacherId: string): StudentProfile[] {
       return (stmtStudentsByTeacher.all(teacherId) as Row[]).map(studentFromRow);
     },
+    byJoinCode(code: string): StudentProfile | undefined {
+      const row = stmtStudentsByCode.get(code) as Row | undefined;
+      return row ? studentFromRow(row) : undefined;
+    },
   },
 );
+
+// No I, L, O, 0, 1: every symbol survives being read aloud over the phone.
+const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+export const normaliseJoinCode = (raw: string): string => raw.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+export function uniqueJoinCode(): string {
+  for (;;) {
+    let code = '';
+    for (let i = 0; i < 6; i++) code += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
+    if (!students.byJoinCode(code)) return code;
+  }
+}
+
+for (const row of students.all()) {
+  if (!row.joinCode) students.update(row.id, { joinCode: uniqueJoinCode() });
+}
 
 const schedule = new StudentScoped<WeeklyScheduleItem>(
   'schedule_items',

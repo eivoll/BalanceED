@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 
 export const DAY_MN: Record<string, string> = {
@@ -375,4 +375,61 @@ export function useToast() {
   const toast = (text: string) => setMsg({ text, tone: 'ok' });
   const toastError = (text: string) => setMsg({ text, tone: 'error' });
   return { toast, toastError, node };
+}
+
+/** Codes are stored bare and shown in two groups, so they stay readable when dictated. */
+export const formatJoinCode = (code: string): string => (code.length === 6 ? `${code.slice(0, 3)}-${code.slice(3)}` : code);
+
+/** One code entry + button, shared by the teacher roster and the childless parent view. */
+export function CodeLinkForm({
+  hint,
+  button,
+  submit,
+  onDone,
+}: {
+  hint: string;
+  button: string;
+  /** Returns the server's error message, or null when the link succeeded. */
+  submit: (code: string) => Promise<string | null>;
+  onDone: () => void;
+}) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState('');
+  const fieldId = useId();
+
+  async function run(e: { preventDefault(): void }) {
+    e.preventDefault();
+    setProblem('');
+    setBusy(true);
+    const err = await submit(code);
+    setBusy(false);
+    if (err) return setProblem(err);
+    setCode('');
+    onDone();
+  }
+
+  return (
+    <form className="flex flex-wrap items-start gap-2" onSubmit={run}>
+      <div className="min-w-0 flex-1">
+        <label className="label" htmlFor={fieldId}>
+          Холбох код
+        </label>
+        <input
+          id={fieldId}
+          className="field"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="ABC-123"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </div>
+      <button type="submit" className="btn-soft mt-5 px-4 py-2 text-xs" disabled={busy || code.trim().length < 4}>
+        {busy ? 'Шалгаж байна…' : button}
+      </button>
+      {problem && <p className="w-full text-[11px] font-semibold text-danger">{problem}</p>}
+      <p className="w-full text-[11px] leading-relaxed text-muted">{hint}</p>
+    </form>
+  );
 }

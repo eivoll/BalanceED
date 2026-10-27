@@ -38,18 +38,25 @@ async function main() {
         const token = parseCookies(req.headers.cookie)[SESSION_COOKIE];
         const tokenHash = token ? hashToken(token) : null;
         const userId = tokenHash ? db.sessions.userIdFor(tokenHash) : null;
-        return {
+        const session = { userId };
+        const ctx: Ctx = {
           user: userId ? db.users.byId(userId) ?? null : null,
+          session,
           openSession(id) {
             const fresh = newSessionToken();
             db.sessions.create(hashToken(fresh), id);
             res.append('Set-Cookie', sessionCookie(fresh));
+            session.userId = id;
+            ctx.user = db.users.byId(id) ?? null;
           },
           closeSession() {
             if (tokenHash) db.sessions.drop(tokenHash);
             res.append('Set-Cookie', clearedSessionCookie());
+            session.userId = null;
+            ctx.user = null;
           },
         };
+        return ctx;
       },
     }),
   );

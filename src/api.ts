@@ -36,7 +36,7 @@ export async function attempt(action: () => Promise<unknown>): Promise<string | 
 }
 
 const STUDENT_FIELDS =
-  'id name grade school aboutMe { interests skills careerGoals } parentVerification { isScheduleApproved approvedDate } hasParent';
+  'id name grade school aboutMe { interests skills careerGoals } parentVerification { isScheduleApproved approvedDate } hasParent hasTeacher joinCode';
 
 const OPPORTUNITY_FIELDS =
   'id title organizer requiredSkills day timeSlot level description location deadline capacity enrolled signups placesLeft';
@@ -136,6 +136,10 @@ export const M = {
     gql(`mutation ($id: ID!, $ok: Boolean!) {
       approveSchedule(studentId: $id, approved: $ok) { id parentVerification { isScheduleApproved approvedDate } }
     }`, { id: studentId, ok: approved }),
+  joinTeacher: (code: string) =>
+    gql(`mutation ($c: String!) { joinTeacher(code: $c) { id name } }`, { c: code }),
+  linkParent: (code: string) =>
+    gql(`mutation ($c: String!) { linkParent(code: $c) { id name } }`, { c: code }),
   toggleAssignment: (id: string, isCompleted: boolean) =>
     gql(`mutation ($id: ID!, $done: Boolean!) { toggleAssignment(id: $id, isCompleted: $done) { id } }`, { id, done: isCompleted }),
   createAssignment: (studentId: string, title: string, subject: string, dueDate: string) =>
@@ -211,6 +215,8 @@ export interface StudentDTO {
   aboutMe: { interests: string[]; skills: string[]; careerGoals: string[] };
   parentVerification: { isScheduleApproved: boolean; approvedDate?: string };
   hasParent: boolean;
+  hasTeacher: boolean;
+  joinCode: string | null;
 }
 
 export type RoleDTO = 'student' | 'parent' | 'teacher';

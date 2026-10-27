@@ -3,7 +3,7 @@ import { type Day } from '../../shared/types';
 import { M, attempt, type StudentDTO } from '../api';
 import { SchoolHoursFields, toEntries, weekdayPreset, type DayRow } from './SchoolHoursEditor';
 import { Icon } from './icons';
-import { Card, Pill, useToast } from './shared';
+import { Card, CodeLinkForm, Pill, useToast } from './shared';
 
 const GRADES = ['6', '7', '8', '9', '10', '11', '12'];
 
@@ -135,6 +135,18 @@ export default function RosterPanel({
         <Card title="Миний анги" subtitle={`${students.length} сурагч · жагсаалтаас устгавал хуваарь, даалгавар, бүртгэл хамт устана`}
           actions={<Pill tone="info">Багшийн жагсаалт</Pill>}
         >
+          <div className="mb-4 rounded-xl border border-line bg-surface/60 p-3">
+            <p className="mb-2 text-xs font-bold">Сурагч холбох</p>
+            <CodeLinkForm
+              hint="Өөрөө бүртгүүлсэн сурагчаас холбох кодыг нь авч энд оруулна уу."
+              button="Холбох"
+              submit={(code) => attempt(() => M.joinTeacher(code))}
+              onDone={() => {
+                toast('Сурагч таны жагсаалтад нэмэгдлээ');
+                onChanged();
+              }}
+            />
+          </div>
           {students.length === 0 ? (
             <p className="rounded-xl border border-line bg-surface px-4 py-6 text-center text-xs text-muted">
               Одоогоор танд сурагч байхгүй. Маягтыг бөглөж шинэ сурагч нэмээрэй.

@@ -61,6 +61,7 @@ const STUDENTS: StudentProfile[] = [
     },
     parentVerification: { isScheduleApproved: true, approvedDate: isoDate(-3) },
     teacherId: 'usr_teacher',
+    joinCode: 'DEMOA1',
   },
   {
     id: 'stu_2',
@@ -74,6 +75,7 @@ const STUDENTS: StudentProfile[] = [
     },
     parentVerification: { isScheduleApproved: false },
     teacherId: 'usr_teacher',
+    joinCode: 'DEMOB2',
   },
 ];
 

@@ -6,7 +6,7 @@ import AssignmentsPanel from './AssignmentsPanel';
 import OpportunityHub from './OpportunityHub';
 import ScheduleGrid from './ScheduleGrid';
 import { SchoolHoursCard } from './SchoolHoursEditor';
-import { Card, Donut, GaugeDial, StatusIcon, StressMeter, fmtDate, useToast } from './shared';
+import { Card, Donut, GaugeDial, StatusIcon, StressMeter, fmtDate, formatJoinCode, useToast } from './shared';
 import { Icon, type IconName } from './icons';
 
 type Tab = 'schedule' | 'academics' | 'opportunities' | 'analysis' | 'aboutme';
@@ -34,7 +34,7 @@ export default function StudentView({
   const [analysis, setAnalysis] = useState<AnalysisDTO | null>(null);
   const [schoolHours, setSchoolHours] = useState<SchoolHourInput[] | null>(null);
   const [verified, setVerified] = useState(student.parentVerification);
-  const { toastError, node: toastNode } = useToast();
+  const { toast, toastError, node: toastNode } = useToast();
 
   const reload = useCallback(() => {
     Q.schedule(student.id).then((d) => setSchedule(d.schedule));
@@ -62,6 +62,16 @@ export default function StudentView({
     ? Math.round((assignments.filter((a) => a.isCompleted).length / assignments.length) * 100)
     : 0;
 
+  async function copyCode() {
+    if (!student.joinCode) return;
+    try {
+      await navigator.clipboard.writeText(formatJoinCode(student.joinCode));
+      toast('Холбох код хуулагдлаа');
+    } catch {
+      toastError('Хуулж чадсангүй — кодыг дэлгэцээс бичиж авна уу');
+    }
+  }
+
   return (
     <div className="grid grid-cols-1 gap-5">
       {/* Hero */}
@@ -82,9 +92,21 @@ export default function StudentView({
                     : 'Эцэг эх холбоогүй — хуваарь баталгаажуулаагүй'}
                 </span>
               )}
+              {student.joinCode && (!student.hasParent || !student.hasTeacher) && (
+                <button
+                  type="button"
+                  onClick={copyCode}
+                  title="Багш эсвэл эцэг эх энэ кодоор тантай холбогдоно. Дарвал хуулна."
+                  className="inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-2.5 py-1 text-[11px] font-bold text-muted transition-colors duration-150 hover:text-ink"
+                >
+                  <Icon name="clipboard" size={13} /> Холбох код: {formatJoinCode(student.joinCode)}
+                </button>
+              )}
             </div>
             <p className="mt-1 text-xs font-medium text-muted">
-              {student.grade} · {student.school} · {student.aboutMe.interests.slice(0, 3).join(', ')}
+              {[String(student.grade), student.school, student.aboutMe.interests.slice(0, 3).join(', ')]
+                .filter((part) => part.trim() !== '')
+                .join(' · ')}
             </p>
           </div>
 
