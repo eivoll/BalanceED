@@ -80,7 +80,7 @@ function TagEditor({
           }}
         />
         {tone === 'interest' && (
-          <button type="button" className="icon-toggle border border-line" onClick={voice.start} title="Дуугаар оруулах (Speech-to-Text)" aria-label="Дуугаар оруулах">
+          <button type="button" className="icon-toggle border border-line" onClick={voice.start} title="Дуугаар оруулах" aria-label="Дуугаар оруулах">
             <Icon name="mic" size={16} />
           </button>
         )}
@@ -101,7 +101,7 @@ export default function AboutMeEditor({ student, onSaved }: { student: StudentDT
     try {
       const problem = await attempt(() => M.updateAboutMe(student.id, interests, skills, goals));
       if (problem) return toastError(problem);
-      toast('About Me хадгалагдлаа');
+      toast('Танилцуулга хадгалагдлаа');
       onSaved();
     } finally {
       setSaving(false);
@@ -109,11 +109,11 @@ export default function AboutMeEditor({ student, onSaved }: { student: StudentDT
   }
 
   return (
-    <Card title="About Me" subtitle="Сонирхол · ур чадвар · зорилго — AI эдгээрт үндэслэн боломж санал болгоно">
+    <Card title="Миний танилцуулга" subtitle="Сонирхол · ур чадвар · зорилго — AI эдгээрт үндэслэн боломж санал болгоно">
       <div className="grid grid-cols-1 gap-4">
-        <TagEditor label="Сонирхол (interests)" placeholder="#DigitalArt гэж бичээд Enter" icon="heart" tone="interest" initial={student.aboutMe.interests} onChange={setInterests} />
-        <TagEditor label="Ур чадвар (skills)" placeholder="Python, Graphic Design…" icon="star" tone="skill" initial={student.aboutMe.skills} onChange={setSkills} />
-        <TagEditor label="Ажлын зорилго (career goals)" placeholder="UX Designer…" icon="target" tone="goal" initial={student.aboutMe.careerGoals} onChange={setGoals} />
+        <TagEditor label="Сонирхол" placeholder="#DigitalArt гэж бичээд Enter" icon="heart" tone="interest" initial={student.aboutMe.interests} onChange={setInterests} />
+        <TagEditor label="Ур чадвар" placeholder="Python, Graphic Design…" icon="star" tone="skill" initial={student.aboutMe.skills} onChange={setSkills} />
+        <TagEditor label="Мэргэжлийн зорилго" placeholder="UX Designer…" icon="target" tone="goal" initial={student.aboutMe.careerGoals} onChange={setGoals} />
       </div>
       <div className="mt-5">
         <button className="btn-grad" disabled={saving} onClick={save}>
@@ -153,7 +153,7 @@ export function AddScheduleForm({ studentId, onAdded }: { studentId: string; onA
           <span className="label">Өдөр</span>
           <select className="field" value={day} onChange={(e) => setDay(e.target.value)}>
             {DAYS.map((d) => (
-              <option key={d} value={d}>{DAY_MN[d]} · {d}</option>
+              <option key={d} value={d}>{DAY_MN[d]}</option>
             ))}
           </select>
         </div>

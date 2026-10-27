@@ -1,9 +1,8 @@
 import type { AnalysisDTO } from '../api';
 import { Icon } from './icons';
-import { Card, CoachCard, GaugeDial, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, riskLevel, scoreLevel, useToast } from './shared';
+import { Card, CoachCard, GaugeDial, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, riskLevel, scoreLevel } from './shared';
 
 export default function AnalysisPanel({ analysis }: { analysis: AnalysisDTO }) {
-  const { toast, node } = useToast();
   const wl = analysis.workloadAnalysis;
   const level = scoreLevel(wl.workloadScore);
 
@@ -31,7 +30,7 @@ export default function AnalysisPanel({ analysis }: { analysis: AnalysisDTO }) {
         </div>
       </Card>
 
-      <Card title="Давхцал & зөвлөмж" subtitle="Шалгалт / даалгавар хүнд өдөртэй давхцаж байвал AI анхааруулна">
+      <Card title="Давхцал & зөвлөмж" subtitle="Шалгалт, даалгавар их ачаалалтай өдөртэй давхцаж байвал AI анхааруулна">
         <ul className="grid grid-cols-1 gap-2.5">
           {analysis.academicProgress.scheduleConflicts.map((c, i) => (
             <li
@@ -45,12 +44,6 @@ export default function AnalysisPanel({ analysis }: { analysis: AnalysisDTO }) {
                 <span className="ml-auto text-xs font-semibold tabular-nums text-muted">{fmtDate(c.date)}</span>
               </div>
               <p className="mt-1.5 text-xs leading-relaxed text-muted">{c.conflictDescriptionMongolian}</p>
-              <button
-                className="btn-soft mt-2.5 inline-flex items-center gap-2 px-3 py-1.5 text-xs"
-                onClick={() => toast('Хүсэлт багшид илгээгдлээ')}
-              >
-                <Icon name="send" size={14} /> Багшид хүсэлт илгээх
-              </button>
             </li>
           ))}
           {!analysis.academicProgress.scheduleConflicts.length && (
@@ -66,7 +59,6 @@ export default function AnalysisPanel({ analysis }: { analysis: AnalysisDTO }) {
           </CoachCard>
         </div>
       </Card>
-      {node}
     </div>
   );
 }

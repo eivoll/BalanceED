@@ -159,8 +159,8 @@ html.dark {
 
 /* Schedule grid */
 .sched-cell { @apply relative border-b border-r border-line/60 p-1 align-top; }
-.sched-free { @apply bg-free/25; }
-.sched-busy { @apply bg-busy; }
+.sched-free { @apply bg-free/70; }
+.sched-busy { @apply bg-busy shadow-[inset_2px_0_0_rgb(var(--c-accent)/0.35)]; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

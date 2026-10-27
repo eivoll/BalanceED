@@ -45,11 +45,11 @@ export default function AssignmentsPanel({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 lg:grid-cols-5">
+    <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
       <Card className="relative overflow-hidden lg:col-span-2" title="Хичээлийн дэвшил" subtitle="Гүйцэтгэсэн даалгавраас автоматаар тооцоолно">
         {pct === 100 && assignments.length > 0 && <Confetti />}
         <div className="flex items-center gap-5">
-          <Donut pct={pct} label="Биелэлт" />
+          <Donut pct={pct} label="Гүйцэтгэл" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">
               {done}<span className="text-muted">/{assignments.length} даалгавар</span>
@@ -66,7 +66,7 @@ export default function AssignmentsPanel({
               </p>
             ) : (
               <p className="mt-3 text-xs leading-relaxed text-muted">
-                Даалгавар дээр дараад гүйцэтгэсэн гэж тэмдэглэ — хувь шууд шинэчлэгдэнэ.
+                Даалгавар дээр дараад гүйцэтгэсэн гэж тэмдэглэ — хувь нь шууд шинэчлэгдэнэ.
               </p>
             )}
           </div>
@@ -124,7 +124,6 @@ export default function AssignmentsPanel({
                 <p className="truncate text-sm font-bold">{e.subject}</p>
                 <p className="text-xs font-medium tabular-nums text-muted">{fmtDate(e.examDate)} · {e.time}</p>
               </div>
-              <span className="ml-auto text-muted"><Icon name="bell" size={18} /></span>
             </li>
           ))}
           {!exams.length && <li className="rounded-xl border border-dashed border-line p-4 text-center text-sm text-muted">Шалгалт төлөвлөгдөөгүй.</li>}

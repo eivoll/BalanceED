@@ -36,7 +36,7 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
         subtitle={`${student.name} — долоо хоногийн хуваарийг шалгаад зөвшөөрнө үү`}
         actions={
           verification.isScheduleApproved ? (
-            <Pill tone="good"><StatusIcon level="ok" /> Зөвшөөрсөн · {verification.approvedDate ?? ''}</Pill>
+            <Pill tone="good"><StatusIcon level="ok" /> Зөвшөөрсөн · {verification.approvedDate ? fmtDate(verification.approvedDate) : ''}</Pill>
           ) : (
             <Pill tone="bad"><StatusIcon level="warn" /> Хүлээгдэж байна</Pill>
           )
@@ -63,15 +63,15 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
 
       {analysis && progress && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <Card title="2 · Бодит цагийн дэвшил" subtitle="Даалгаврын биелэлт шууд шинэчлэгдэнэ">
+          <Card title="2 · Бодит цагийн дэвшил" subtitle="Даалгаврын гүйцэтгэл шууд шинэчлэгдэнэ">
             <div className="flex items-center gap-6">
-              <Donut pct={progress.completionPercentage} label="Биелэлт" />
+              <Donut pct={progress.completionPercentage} label="Гүйцэтгэл" />
               <div className="grid grid-cols-1 gap-2 text-sm">
                 <p className="font-semibold">
                   {progress.completedAssignments}<span className="text-muted">/{progress.totalAssignments} даалгавар дууссан</span>
                 </p>
                 <p className="flex items-center gap-2 font-semibold">
-                  Удахгүй шалгалт: {progress.upcomingExamsCount}
+                  Ойрын шалгалт: {progress.upcomingExamsCount}
                   {progress.upcomingExamsCount > 0 && <Icon name="bell" size={15} className="text-warn" />}
                 </p>
                 <p className="flex items-center gap-2">
@@ -91,9 +91,19 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
                 ))}
               </ul>
             )}
+            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-line/70 pt-3 text-xs">
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Долоо хоногийн ачаалал</dt>
+                <dd className="font-bold tabular-nums">{analysis.weeklyScheduleSummary.totalActivityHours} цаг</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Товлогдсон үйл ажиллагаа</dt>
+                <dd className="font-bold tabular-nums">{analysis.weeklyScheduleSummary.scheduledItems}</dd>
+              </div>
+            </dl>
           </Card>
 
-          <Card title="3 · AI долоо хоногийн тойм" subtitle="Эцэг эхэд зориулсан ээлтэй тайлбар">
+          <Card title="3 · AI долоо хоногийн тойм" subtitle="Эцэг эхэд зориулсан энгийн тайлбар">
             <CoachCard>
               <span className="font-medium">{analysis.parentReport.progressSummaryMongolian}</span>
             </CoachCard>

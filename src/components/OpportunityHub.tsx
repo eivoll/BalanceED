@@ -5,12 +5,22 @@ import { Icon, type IconName } from './icons';
 
 function category(opp: OpportunityDTO): { icon: IconName; tag: string } {
   const text = `${opp.title} ${opp.requiredSkills.join(' ')} ${opp.organizer}`.toLowerCase();
-  if (/design|art|draw|paint|mural|ux|figma/.test(text)) return { icon: 'palette', tag: '#Design' };
-  if (/code|python|robot|stem|computer|app/.test(text)) return { icon: 'code', tag: '#Coding' };
-  if (/debate|speech|english|law|policy/.test(text)) return { icon: 'speech', tag: '#Debate' };
-  if (/music|piano|choir|concert/.test(text)) return { icon: 'music', tag: '#Music' };
-  if (/climate|tree|environment|volunteer|charity|community|reading/.test(text)) return { icon: 'sprout', tag: '#Volunteering' };
-  return { icon: 'star', tag: '#Club' };
+  if (/design|art|draw|paint|mural|ux|figma/.test(text)) return { icon: 'palette', tag: 'Дизайн' };
+  if (/code|python|robot|stem|computer|app/.test(text)) return { icon: 'code', tag: 'Кодчлол' };
+  if (/debate|speech|english|law|policy/.test(text)) return { icon: 'speech', tag: 'Маргаа' };
+  if (/music|piano|choir|concert/.test(text)) return { icon: 'music', tag: 'Хөгжим' };
+  if (/climate|tree|environment|volunteer|charity|community|reading/.test(text)) return { icon: 'sprout', tag: 'Сочил' };
+  return { icon: 'star', tag: 'Бүлэг' };
+}
+
+/** Match quality is the one number on the card, so it carries the colour, not everything-green. */
+function matchTone(score: string): string {
+  const n = parseInt(score) || 0;
+  return n >= 70
+    ? 'bg-ok/15 text-ok'
+    : n >= 40
+      ? 'bg-warn/15 text-warn'
+      : 'bg-muted/15 text-muted';
 }
 
 const LEVEL_STYLE: Record<string, string> = {
@@ -45,15 +55,17 @@ export default function OpportunityHub({ items }: { items: OpportunityDTO[] }) {
               <div className="px-4 pb-4 pt-4">
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="text-sm font-bold leading-snug">{o.title}</h4>
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-ok/15 px-2.5 py-1 text-[11px] font-extrabold text-ok shadow-sm">
-                    <Icon name="target" size={13} /> {o.matchScore} нийц
-                  </span>
+                  {o.matchScore && (
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold shadow-sm ${matchTone(o.matchScore)}`}>
+                      <Icon name="target" size={13} /> {o.matchScore} нийцэл
+                    </span>
+                  )}
                 </div>
                 <p className="mt-0.5 text-xs font-medium text-muted">{o.organizer}</p>
 
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${LEVEL_STYLE[o.level] ?? ''}`}>{LEVEL_MN[o.level] ?? o.level}</span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-ok/40 bg-ok/10 px-2 py-0.5 text-[10px] font-bold text-ok">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-bold text-accent">
                     <Icon name="calendar" size={12} /> {DAY_MN[o.day]} {o.timeSlot.split('-')[0]}
                   </span>
                   {o.requiredSkills.slice(0, 2).map((s) => (
@@ -79,7 +91,7 @@ export default function OpportunityHub({ items }: { items: OpportunityDTO[] }) {
                   onClick={() => {
                     if (isJoined) return;
                     setJoined((j) => ({ ...j, [o.id]: true }));
-                    toast(`"${o.title}" — бүртгэл амжилттай`);
+                    toast(`«${o.title}» амжилттай бүртгэгдлээ.`);
                   }}
                 >
                   {isJoined ? (
@@ -88,7 +100,7 @@ export default function OpportunityHub({ items }: { items: OpportunityDTO[] }) {
                     </>
                   ) : (
                     <>
-                      Нэгдэх / Оролцох <Icon name="arrowRight" size={16} />
+                      Элсэх <Icon name="arrowRight" size={16} />
                     </>
                   )}
                 </button>
@@ -98,7 +110,7 @@ export default function OpportunityHub({ items }: { items: OpportunityDTO[] }) {
         })}
         {!items.length && (
           <p className="col-span-full rounded-2xl border border-dashed border-line p-8 text-center text-sm text-muted">
-            Одоогоор таны чөлөөт цагт багтах боломж олдсонгүй. About Me-гээ шинэчлэх эсвэл хуваарьтаа чөлөөт цаг нэмж үзээрэй.
+            Одоогоор таны чөлөөт цагт тохрох боломж олдсонгүй. Танилцуулгаа шинэчилж эсвэл хуваарьтаа чөлөөт цаг нэмж үзээрэй.
           </p>
         )}
       </div>

@@ -5,7 +5,7 @@ import AnalysisPanel from './AnalysisPanel';
 import AssignmentsPanel from './AssignmentsPanel';
 import OpportunityHub from './OpportunityHub';
 import ScheduleGrid from './ScheduleGrid';
-import { Card, Donut, GaugeDial, StatusIcon, useToast } from './shared';
+import { Card, Donut, GaugeDial, StatusIcon, fmtDate, useToast } from './shared';
 import { Icon, type IconName } from './icons';
 
 type Tab = 'schedule' | 'academics' | 'opportunities' | 'analysis' | 'aboutme';
@@ -15,7 +15,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'academics', label: 'Даалгавар & шалгалт', icon: 'book' },
   { id: 'opportunities', label: 'Боломжууд', icon: 'target' },
   { id: 'analysis', label: 'AI шинжилгээ', icon: 'cpu' },
-  { id: 'aboutme', label: 'About Me', icon: 'user' },
+  { id: 'aboutme', label: 'Танилцуулга', icon: 'user' },
 ];
 
 export default function StudentView({
@@ -69,7 +69,7 @@ export default function StudentView({
               <h2 className="text-xl font-extrabold tracking-tight">Сайн уу, {student.name.split(' ')[0]}</h2>
               {verified.isScheduleApproved ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-ok/40 bg-ok/10 px-2.5 py-1 text-[11px] font-bold text-ok">
-                  <StatusIcon level="ok" /> Эцэг эх зөвшөөрсөн · {verified.approvedDate}
+                  <StatusIcon level="ok" /> Эцэг эх зөвшөөрсөн · {verified.approvedDate ? fmtDate(verified.approvedDate) : ''}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-[11px] font-bold text-warn">

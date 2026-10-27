@@ -32,7 +32,7 @@ export const LEVEL_MN: Record<string, string> = {
 
 /** Status always pairs color with an icon, so it never relies on hue alone. */
 export function StatusIcon({ level }: { level: 'ok' | 'warn' | 'danger' }) {
-  if (level === 'ok') return <Icon name="check" title="Зөв / Сайн" />;
+  if (level === 'ok') return <Icon name="check" title="Сайн" />;
   if (level === 'warn') return <Icon name="alert" title="Анхааруулга" />;
   return <Icon name="dot" title="Эрсдэл өндөр" />;
 }
@@ -213,9 +213,10 @@ export function catIcon(activity: string): IconName {
   return 'pin';
 }
 
+/** Mongolian dates read month-first ("10 сарын 29"); the browser's mn-MN locale data is not reliable. */
 export function fmtDate(iso: string): string {
   const d = new Date(iso + (iso.length === 10 ? 'T12:00:00' : ''));
-  return d.toLocaleDateString('mn-MN', { month: 'short', day: 'numeric' });
+  return `${d.getMonth() + 1} сарын ${d.getDate()}`;
 }
 
 export function useToast() {

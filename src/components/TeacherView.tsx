@@ -4,23 +4,17 @@ import { attempt, M, Q, type AnalysisDTO, type ClassRowDTO, type OpportunityDTO,
 import RosterPanel from './RosterPanel';
 import { Icon } from './icons';
 import ScheduleGrid from './ScheduleGrid';
-import { Card, CoachCard, DAY_MN, LEVEL_MN, Pill, RISK_MN, STATUS_MN, ScoreBadge, StatusIcon, scoreLevel, useToast } from './shared';
+import { Card, CoachCard, DAY_MN, LEVEL_MN, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, scoreLevel, useToast } from './shared';
 
 const LEVELS = ['School', 'National', 'Global'];
 
-function MiniGauge({ score }: { score: number }) {
-  const filled = Math.round(score);
+function ScoreBar({ score }: { score: number }) {
   const level = scoreLevel(score);
   const color = level === 'ok' ? 'bg-ok' : level === 'warn' ? 'bg-warn' : 'bg-danger';
   return (
-    <div className="flex items-center gap-1" aria-label={`Ачаалал ${score}/10`}>
-      {Array.from({ length: 10 }).map((_, i) => (
-        <span
-          key={i}
-          className={`h-4 w-1.5 rounded-full transition-all duration-300 ${i < filled ? color : 'bg-line'}`}
-        />
-      ))}
-    </div>
+    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-line/70" aria-hidden>
+      <span className={`block h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${Math.min(100, score * 10)}%` }} />
+    </span>
   );
 }
 
@@ -63,7 +57,7 @@ export default function TeacherView({
 
       {students.length === 0 && (
         <div className="glass p-8 text-center text-sm text-muted">
-          Анги дүүрмэгц ачааллын индекс, AI зөвлөмж энд харагдана.
+          Ангидаа сурагч нэмэгдмэгц ачааллын индекс, AI зөвлөмж энд харагдана.
         </div>
       )}
 
@@ -85,18 +79,19 @@ export default function TeacherView({
                   }`}
                   style={{ animationDelay: `${i * 60}ms` }}
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent text-sm font-extrabold text-onaccent shadow-sm">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-line bg-page text-sm font-extrabold text-accent">
                     {r.studentName.split(' ')[0]?.[0]}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-bold">{r.studentName}</span>
-                    <span className="block text-[11px] font-medium text-muted">{r.grade} · {STATUS_MN[r.status] ?? r.status}</span>
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className="block truncate text-sm font-bold">{r.studentName}</span>
+                      <span className="shrink-0 text-sm font-extrabold tabular-nums">{r.workloadScore.toFixed(1)}<span className="text-[11px] font-medium text-muted">/10</span></span>
+                    </span>
+                    <ScoreBar score={r.workloadScore} />
+                    <span className="mt-1.5 block truncate text-[11px] font-medium text-muted">
+                      {r.grade} · {STATUS_MN[r.status] ?? r.status} · {RISK_MN[r.stressRisk] ?? r.stressRisk} эрсдэл
+                    </span>
                   </span>
-                  <MiniGauge score={r.workloadScore} />
-                  <ScoreBadge score={r.workloadScore} />
-                  <Pill tone={r.stressRisk === 'High' ? 'bad' : r.stressRisk === 'Medium' ? 'info' : 'good'}>
-                    <StatusIcon level={r.stressRisk === 'High' ? 'danger' : r.stressRisk === 'Medium' ? 'warn' : 'ok'} /> {RISK_MN[r.stressRisk] ?? r.stressRisk}
-                  </Pill>
                 </button>
               ))}
             </div>
@@ -104,7 +99,7 @@ export default function TeacherView({
 
           {analysis && (
             <div className="grid grid-cols-1 gap-5">
-              <Card title={`AI зөвлөмж — ${analysis.studentName}`} subtitle="Давхцал ба хугацааны шийдвэр гаргахад туслах саналууд">
+              <Card title={`AI зөвлөмж — ${analysis.studentName}`} subtitle="Давхцлыг арилгах, хугацаа сунгахад туслах саналууд">
                 <CoachCard>
                   <p className="inline-flex items-center gap-2 font-semibold"><Icon name="alert" size={15} /> Хугацаа сунгах санал:</p>
                   <p className="mt-1">{analysis.teacherRecommendations.deadlineAdjustments}</p>
@@ -116,14 +111,14 @@ export default function TeacherView({
                     {analysis.academicProgress.scheduleConflicts.map((c, i) => (
                       <li key={i} className="rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-xs">
                         <span className="font-bold"><StatusIcon level="warn" /> {c.examOrAssignment}</span>
-                        <span className="ml-2 tabular-nums text-muted">{c.date}</span>
+                        <span className="ml-2 tabular-nums text-muted">{fmtDate(c.date)}</span>
                         <p className="mt-1 leading-relaxed text-muted">{c.conflictDescriptionMongolian}</p>
                       </li>
                     ))}
                   </ul>
                 )}
               </Card>
-              <Card title="Сурагчийн хуваарь" subtitle="Давхцал шалгах зорилгоор">
+              <Card title="Сурагчийн хуваарь" subtitle="Зөвхөн давхцал шалгах зорилгоор харуулсан">
                 <ScheduleGrid items={schedule} />
               </Card>
             </div>
@@ -200,7 +195,7 @@ function PostWorkForm({ studentId, students, onPosted }: { studentId: string; st
           <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Math" />
         </div>
         <div>
-          <span className="label">{mode === 'assignment' ? 'Хугацаа (due date)' : 'Шалгалтын огноо'}</span>
+          <span className="label">{mode === 'assignment' ? 'Хугацаа' : 'Шалгалтын огноо'}</span>
           <input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} />
         </div>
         {mode === 'exam' && (
@@ -211,7 +206,7 @@ function PostWorkForm({ studentId, students, onPosted }: { studentId: string; st
         )}
       </div>
       <div className="mt-4">
-        <button className="btn-grad" onClick={post}><Icon name="send" size={15} /> Нийтлэх <Icon name="arrowRight" size={15} /> сурагчийн хуваарьт</button>
+        <button className="btn-grad" onClick={post}><Icon name="send" size={15} /> Сурагчийн хуваарьт нийтлэх</button>
       </div>
       {node}
     </Card>
@@ -229,7 +224,7 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
   const { toast, toastError, node } = useToast();
 
   async function post() {
-    if (!title.trim() || !organizer.trim()) return toastError('Гарчиг ба зохион байгуулагчаа бөглөнө үү.');
+    if (!title.trim() || !organizer.trim()) return toastError('Гарчиг, зохион байгуулагчийг бөглөнө үү.');
     const problem = await attempt(() =>
       M.createOpportunity({
         title: title.trim(),

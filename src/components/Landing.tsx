@@ -5,7 +5,7 @@ import { StatusIcon } from './shared';
 
 const DEMO_ACCOUNTS: { email: string; role: string; who: string; icon: IconName }[] = [
   { email: 'teacher@demo.mn', role: 'Багш', who: 'ангийн ачаалал, даалгавар, сурагч нэмэх', icon: 'clipboard' },
-  { email: 'student@demo.mn', role: 'Сурагч', who: 'хуваарь, даалгавар, About Me', icon: 'book' },
+  { email: 'student@demo.mn', role: 'Сурагч', who: 'хуваарь, даалгавар, танилцуулга', icon: 'book' },
   { email: 'parent@demo.mn', role: 'Эцэг эх', who: 'хуваарь баталгаажуулах, дэвшил', icon: 'heart' },
 ];
 
@@ -35,10 +35,10 @@ export default function Landing({ onSignedIn }: { onSignedIn: (user: AuthUserDTO
       <section className="px-1 py-2">
         <p className="eyebrow text-accent">Тэнцвэртэй сургалт</p>
         <h2 className="mt-3 max-w-[16ch] text-3xl font-extrabold leading-[1.15] tracking-tight sm:text-4xl">
-          Сурагчийн долоо хоногийг хэн хянаж байна вэ?
+          Сурагчийн долоо хоног тэнцвэртэй байна уу?
         </h2>
         <p className="mt-4 max-w-lg text-sm leading-relaxed text-muted">
-          BalanceEd хичээл, спорт, ажил хөдөлмөр, ур чадварын боломжуудыг нэг долоо хоногийн
+          BalanceEd хичээл, спорт, ажил, ур чадварын боломжуудыг нэг долоо хоногийн
           хуваарьт цуглуулж, ачааллын индекс, давхцал, эцэг эхийн зөвшөөрлийг нэг дор харуулна.
         </p>
 
