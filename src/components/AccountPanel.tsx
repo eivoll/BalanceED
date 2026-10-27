@@ -16,6 +16,7 @@ export default function AccountPanel({
 }) {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -40,12 +41,15 @@ export default function AccountPanel({
     e.preventDefault();
     setFeedback(null);
     if (next.length < 8) return setFeedback({ text: 'Шинэ нууц үг дор хаяж 8 тэмдэгт байх.', ok: false });
+    // A typo here would otherwise become the password they must remember.
+    if (next !== confirm) return setFeedback({ text: 'Шинэ нууц үг хоёроо тохирохгүй байна.', ok: false });
     setBusy(true);
     const problem = await attempt(() => A.changePassword(current, next));
     setBusy(false);
     if (problem) return setFeedback({ text: problem, ok: false });
     setCurrent('');
     setNext('');
+    setConfirm('');
     setFeedback({ text: 'Нууц үг солигдлоо. Бусад төхөөрөмжөөс дахин нэвтрэх шаардлагатай.', ok: true });
   }
 
@@ -81,22 +85,33 @@ export default function AccountPanel({
 
       <form className="mt-4 border-t border-line/70 pt-3" onSubmit={changePassword}>
         <p className="mb-2 text-xs font-bold">Нууц үг солих</p>
-        <span className="label">Одоогийн нууц үг</span>
+        <label className="label" htmlFor="pw-current">Одоогийн нууц үг</label>
         <input
+          id="pw-current"
           className="field"
           type="password"
           autoComplete="current-password"
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
         />
-        <span className="label mt-2 block">Шинэ нууц үг</span>
+        <label className="label mt-2 block" htmlFor="pw-next">Шинэ нууц үг</label>
         <input
+          id="pw-next"
           className="field"
           type="password"
           autoComplete="new-password"
           value={next}
           onChange={(e) => setNext(e.target.value)}
           placeholder="дор хаяж 8 тэмдэгт"
+        />
+        <label className="label mt-2 block" htmlFor="pw-next2">Шинэ нууц үг давтах</label>
+        <input
+          id="pw-next2"
+          className="field"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
         />
         {feedback && (
           <p
@@ -107,7 +122,11 @@ export default function AccountPanel({
             <StatusIcon level={feedback.ok ? 'ok' : 'danger'} /> {feedback.text}
           </p>
         )}
-        <button type="submit" className="btn-soft mt-3 w-full py-2 text-xs" disabled={busy || !current || !next}>
+        <button
+          type="submit"
+          className="btn-soft mt-3 w-full py-2 text-xs"
+          disabled={busy || !current || !next || !confirm}
+        >
           {busy ? 'Шалгаж байна…' : 'Хадгалах'}
         </button>
       </form>

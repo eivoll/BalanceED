@@ -403,6 +403,11 @@ export const resolvers = {
         throw new UserInputError('Одоогийн нууц үг буруу байна.');
       }
       const next = parsePassword(newPassword);
+      // Re-hashing the same secret would still drop every session, which reads as a
+      // successful change that locked the user out of their other devices for nothing.
+      if (next === currentPassword) {
+        throw new UserInputError('Шинэ нууц үг одоогийнхоосөө ялгаатай байх ёстой.');
+      }
       db.users.update(user.id, { passwordHash: await hashPassword(next) });
       // Force every other device to sign in again with the new password.
       db.sessions.dropAllForUser(user.id);
