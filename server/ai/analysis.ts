@@ -555,7 +555,7 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
       }
       if (interestHits.length) {
         kinds.push('сонирхол');
-        // The # a tag chip carries has no business inside a sentence.
+        // A tag typed with a leading '#' still has no business carrying it inside a sentence.
         matched.push(...interestHits.map((h) => h.raw.replace(/^#/, '')));
       }
       const placeNote =
@@ -564,7 +564,9 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
           : placesLeft === 0
             ? ' Сул орон дууссан тул хүлээлгийн жагсаалтад бичигдэнэ.'
             : ` Одоо ${placesLeft} сул орон байна.`;
-      const fits = fitsFreeSlot(opp);
+      // Enrolling puts the block into the timetable, so the slot the student already holds
+      // reads as taken — an enrolled place is proof the time works, not a conflict.
+      const fits = enrolledIds.has(opp.id) || fitsFreeSlot(opp);
       // A non-breaking hyphen keeps a time range from splitting across two lines mid-sentence.
       const daySlot = `${DAY_MN[opp.day]} гарагийн ${opp.timeSlot.replace('-', '\u2011')}`;
       const note = matched.length
