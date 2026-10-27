@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { DAYS } from '../../shared/types';
 import { attempt, M, type StudentDTO } from '../api';
-import { useA11y } from '../accessibility';
+import { useVoiceInput } from '../voice';
 import { TimeRangeFields } from './DateTimeField';
 import { Card, DAY_MN, useToast } from './shared';
 import { Icon, type IconName } from './icons';
@@ -23,8 +23,7 @@ function TagEditor({
 }) {
   const [tags, setTags] = useState(initial);
   const [draft, setDraft] = useState('');
-  const { voiceInput } = useA11y();
-  const voice = voiceInput((text) => add(text.trim()));
+  const voice = useVoiceInput((text) => add(text.trim()));
 
   const toneCls =
     tone === 'interest'
@@ -80,7 +79,7 @@ function TagEditor({
             }
           }}
         />
-        {tone === 'interest' && (
+        {tone === 'interest' && voice.supported && (
           <button type="button" className="icon-toggle border border-line" onClick={voice.start} title="Дуугаар оруулах" aria-label="Дуугаар оруулах">
             <Icon name="mic" size={16} />
           </button>
@@ -132,9 +131,8 @@ export function AddScheduleForm({ studentId, onAdded }: { studentId: string; onA
   const [end, setEnd] = useState('17:30');
   const [activity, setActivity] = useState('');
   const [error, setError] = useState('');
-  const { voiceInput } = useA11y();
+  const voice = useVoiceInput((text) => setActivity(text.trim()));
   const { toast, node } = useToast();
-  const voice = voiceInput((text) => setActivity(text.trim()));
 
   async function add() {
     setError('');
@@ -167,9 +165,11 @@ export function AddScheduleForm({ studentId, onAdded }: { studentId: string; onA
           <span className="label">Үйл ажиллагаа</span>
           <div className="flex gap-2">
             <input className="field" value={activity} placeholder="Жүдо бэлтгэл…" onChange={(e) => setActivity(e.target.value)} />
-            <button type="button" className="icon-toggle shrink-0 border border-line" onClick={voice.start} title="Дуугаар оруулах" aria-label="Дуугаар оруулах">
-              <Icon name="mic" size={16} />
-            </button>
+            {voice.supported && (
+              <button type="button" className="icon-toggle shrink-0 border border-line" onClick={voice.start} title="Дуугаар оруулах" aria-label="Дуугаар оруулах">
+                <Icon name="mic" size={16} />
+              </button>
+            )}
           </div>
         </div>
       </div>

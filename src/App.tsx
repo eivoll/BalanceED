@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { A, type AuthUserDTO } from './api';
-import { A11yProvider, useA11y } from './accessibility';
+import { ThemeProvider, useTheme } from './theme';
 import AccountPanel from './components/AccountPanel';
 import Landing from './components/Landing';
 import StudentView from './components/StudentView';
@@ -17,7 +17,7 @@ function Shell() {
   const [booting, setBooting] = useState(true);
   const [bootError, setBootError] = useState('');
   const [accountOpen, setAccountOpen] = useState(false);
-  const { theme, setTheme } = useA11y();
+  const { theme, setTheme } = useTheme();
 
   const refresh = useCallback(() => {
     A.me()
@@ -147,7 +147,10 @@ function Shell() {
           )}
           {user.role === 'parent' && !students.length && (
             <div className="glass p-8 text-center text-sm text-muted">
-              Таны хүүхэд хараахан аль нэг багштай холбогдоогүй байна. Багшаасаа и-мэйл урилга авна уу.
+              <p>Танд одоогоор холбогдсон хүүхэд алга.</p>
+              <p className="mt-1.5 text-xs leading-relaxed">
+                Хүүхдийн хуваарь энд харагдахын тулд бүртгэлийн үед эцэг эхийн и-мэйл хаяг заасан байх шаардлагатай.
+              </p>
             </div>
           )}
         </main>
@@ -167,8 +170,8 @@ function Shell() {
 
 export default function App() {
   return (
-    <A11yProvider>
+    <ThemeProvider>
       <Shell />
-    </A11yProvider>
+    </ThemeProvider>
   );
 }
