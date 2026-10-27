@@ -179,9 +179,6 @@ export function AddScheduleForm({ studentId, onAdded }: { studentId: string; onA
           <Icon name="plus" size={16} /> Хуваарьт нэмэх
         </button>
       </div>
-      <p className="mt-3 text-[11px] leading-relaxed text-muted">
-        Хуваарь өөрчлөгдвөл эцэг эхийн өмнөх зөвшөөрөл автоматаар цуцлагдана.
-      </p>
       {node}
     </Card>
   );

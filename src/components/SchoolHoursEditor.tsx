@@ -139,7 +139,7 @@ export function SchoolHoursFields({
       {backwards.length > 0 && (
         <p className="mt-3 flex items-start gap-2 rounded-xl border border-warn/30 bg-warn/10 px-3 py-2 text-xs font-semibold text-warn">
           <Icon name="alert" size={15} className="mt-0.5 shrink-0" />
-          {backwards.map((d) => DAY_MN[d]).join(', ')} гарагт эхлэх, дуусах цаг адил байна.
+          {backwards.map((d) => DAY_MN[d]).join(', ')} гарагт эхлэх ба дуусах цаг ижил байна.
         </p>
       )}
       {hint && <p className="mt-3 text-[11px] leading-relaxed text-muted">{hint}</p>}
@@ -180,7 +180,7 @@ export function SchoolHoursCard({
   return (
     <Card
       title="Сургуулийн долоо хоногийн хуваарь"
-      subtitle="Энэ цагийг систем чөлөөт цагт тооцдоггүй — зөвхөн хичээлээс гадуурх ажлыг л үлдсэн цагт багтаана"
+      subtitle="Сургуулийн цагийг систем чөлөөт цагт тооцдоггүй — зөвхөн хичээлээс гадуурх ажлыг л үлдсэн цагт багтаана"
       actions={
         <button className="btn-grad px-3 py-1.5 text-xs" onClick={save} disabled={busy || !dirty}>
           {busy ? 'Хадгалж байна…' : <><Icon name="save" size={14} /> Хадгалах</>}

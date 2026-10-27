@@ -116,7 +116,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
         <Field label="Сургууль" htmlFor="su-school">
           <input id="su-school" className="field" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="Билим Эрдүн цогцолбор сургууль" />
         </Field>
-        <Field label="И-мэйл" htmlFor="su-email" hint="Нэвтрэх хаяг болно — бусдад харагдана.">
+        <Field label="И-мэйл" htmlFor="su-email" hint="Нэвтрэх хаяг болно — зөвхөн өөрт тань харагдана.">
           <input id="su-email" className="field" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="saraa@mail.mn" autoComplete="username" />
         </Field>
         <Field label="Нууц үг" htmlFor="su-pass" hint="Дор хаяж 8 тэмдэгт.">
@@ -131,7 +131,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
       <SchoolHoursFields
         value={rows}
         onChange={setRows}
-        hint="Энэ цаг чөлөөт цагт тооцогдохгүй — хичээлээс гадуурх ажил, даалгавар зөвхөн үлдсэн цагт багтана."
+        hint="Сургуулийн цагийг чөлөөт цагт тооцохгүй — хичээлээс гадуурх ажил, даалгавар зөвхөн үлдсэн цагт багтана."
       />
 
       <SectionTitle icon="bulb">Сонирхол, ур чадвар, зорилго</SectionTitle>
