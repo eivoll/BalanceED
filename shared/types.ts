@@ -104,7 +104,7 @@ export interface Opportunity {
   capacity: number;
 }
 
-/** A student's place in an opportunity — the record behind the "Элсэх" button. */
+/** A student's place in an opportunity — the record behind the "Бүртгүүлэх" button. */
 export interface OpportunitySignup {
   id: string;
   opportunityId: string;

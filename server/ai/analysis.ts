@@ -559,7 +559,7 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
         placesLeft === null
           ? ''
           : placesLeft === 0
-            ? ' Сул орон дууссан тул хүлээлийн жагсаалтад бичигдэнэ.'
+            ? ' Сул орон дууссан тул хүлээлгийн жагсаалтад бичигдэнэ.'
             : ` Одоо ${placesLeft} сул орон байна.`;
       const reason = matched.length
         ? `Таны ${kinds.join(' болон ')} (${matched.join(', ')}) таарч, ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтаж байна.${placeNote}`
@@ -594,7 +594,7 @@ async function gemmaEnrich(
 ): Promise<Partial<{ aiSummaryMongolian: string; deadlineAdjustments: string; examPrepAdvice: string; progressSummaryMongolian: string }>> {
   if (!gemmaEnabled) return {};
   const prompt = `Чи бол BalanceEd платформын AI туслах. Доорх мэдээлэлд үндэслэн Монгол хэлээр 4 хэсэг бүтээ. Зөвхөн JSON буцаа (markdown хэрэглэхгүй).
-Сурагч: ${student.name}, ${student.grade}, ${student.school}
+Сурагч: ${student.grade} ангийн
 Ачааллын оноо (1-10): ${facts.score}, стрессийн түвшин (0-100): ${facts.stressScore}
 Стрессийн шалтгаан: ${facts.stressDrivers.filter((d) => d.impact > 0).map((d) => d.detailMongolian).join(' ') || 'байхгүй'}
 Хугацаа: сургууль ${facts.schoolHours} цаг, хичээлээс гадуурх ажил ${facts.activityHours} цаг, чөлөөт цаг ${facts.freeHours} цаг
@@ -638,7 +638,7 @@ export async function buildWorkloadAnalysis(student: StudentProfile) {
   const topDriver = facts.stressDrivers[0];
   const aiSummaryMongolian =
     ai.aiSummaryMongolian ??
-    `${student.name} сурагчийн долоо хоногийн ачаалал ${facts.score}/10 (${STATUS_MN[facts.status] ?? facts.status}), стрессийн түвшин ${facts.stressScore}/100 буюу ${riskMn(facts.stressRisk, false)} эрсдэлтэй байна. Сургуульд ${facts.schoolHours} цаг, хичээлээс гадуурх ажилд ${facts.activityHours} цаг зарцуулж, гарын чөлөөт цаг ${facts.freeHours} цаг үлдэж байна.${
+    `${student.name} сурагчийн долоо хоногийн ачаалал ${facts.score}/10 (${STATUS_MN[facts.status] ?? facts.status}), стрессийн түвшин ${facts.stressScore}/100 буюу ${riskMn(facts.stressRisk, false)} эрсдэлтэй байна. Сургуульд ${facts.schoolHours} цаг, хичээлээс гадуурх ажилд ${facts.activityHours} цаг зарцуулж, ${facts.freeHours} цаг чөлөөт цаг үлдэж байна.${
       topDriver && topDriver.impact > 0 ? ` Гол шалтгаан: ${topDriver.detailMongolian}` : ' Стрессийг нэмэгдүүлэх гол шалтгаан илэрч байхгүй байна.'
     }${facts.conflicts.length ? ' Хуваарьт давхцал илэрсэн тул зарим даалгаврын хугацааг хойшлуулахыг зөвлөж байна.' : ' Одоогоор ноцтой давхцал алга.'}`;
 

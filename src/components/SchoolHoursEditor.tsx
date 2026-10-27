@@ -167,7 +167,7 @@ export function SchoolHoursCard({
   async function save() {
     setError('');
     const entries = toEntries(rows);
-    if (!entries.length) return setError('Дор хаяж нэг өдөрт хичээлийн цаг заана уу.');
+    if (!entries.length) return setError('Дор хаяж нэг өдрийн хичээлийн цагаа заана уу.');
     setBusy(true);
     const problem = await attempt(() => M.setSchoolHours(studentId, entries));
     setBusy(false);

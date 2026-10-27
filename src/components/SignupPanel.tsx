@@ -76,7 +76,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
     }
 
     const schoolHours = toEntries(rows);
-    if (!schoolHours.length) return setError('Долоо хоногийн хичээлийн хуваариасаа дор хаяж нэг өдрөөр заана уу.');
+    if (!schoolHours.length) return setError('Дор хаяж нэг өдрийн хичээлийн цагаа заана уу.');
 
     const input: SignupInput = {
       name: name.trim(),
@@ -110,7 +110,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
         <Field label="Нэр" htmlFor="su-name">
           <input id="su-name" className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="Оргилмаа Бат" autoComplete="name" />
         </Field>
-        <Field label="Анги" htmlFor="su-grade" hint="Жш: 11-Б · зөвхөн ангиасаа бичнэ үү.">
+        <Field label="Анги" htmlFor="su-grade" hint="Жишээ: 11-Б · ангиа хамт бичнэ үү.">
           <input id="su-grade" className="field" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="11-Б" />
         </Field>
         <Field label="Сургууль" htmlFor="su-school">
@@ -147,7 +147,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
         </Field>
       </div>
       <p className="-mt-2 text-[11px] leading-relaxed text-muted">
-        Эдгээрийг дараа нь «Танилцуулга» хэсгээс засаж болно — AI боломжийг үүгээр нь сонгоно.
+        Эдгээрийг дараа нь «Танилцуулга» хэсгээс засаж болно. AI боломж сонгохдоо энд бичсэн зүйлсийг харна.
       </p>
 
       <SectionTitle icon="heart">Эцэг эхийн мэдээлэл</SectionTitle>
@@ -176,7 +176,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
         {busy ? 'Бүртгэж байна…' : <><Icon name="plus" size={16} /> Бүртгүүлэх</>}
       </button>
       <p className="text-[11px] leading-relaxed text-muted">
-        Оруулсан мэдээлэл зөвхөн энэ демо серверт хадгалагдана — гадаад сервис рүү юу ч илгээхгүй.
+        Оруулсан мэдээлэл зөвхөн энэ серверт хадгалагдана — AI тойм үүсгэхэд нэр, и-мэйл зэрэг хувийн мэдээлэл гадаад үйлчилгээнд очдоггүй.
       </p>
     </form>
   );

@@ -141,7 +141,7 @@ function OpportunityCard({
               : full
                 ? (
                     <>
-                      <Icon name="alert" size={16} /> Хүлээлийн жагсаалт
+                      <Icon name="alert" size={16} /> Хүлээлгийн жагсаалт
                     </>
                   )
                 : (
@@ -152,7 +152,7 @@ function OpportunityCard({
         </button>
         {full && !opp.enrolled && !busy && (
           <p className="mt-2 text-[10px] leading-relaxed text-muted">
-            Сул орон байхгүй ч бүртгүүлбэл хүлээлийн жагсаалтад орно — цуцлагдвал эхний боломж тань болно.
+            Сул орон дууссан ч бүртгүүлж болно — нэр тань хүлээлгийн жагсаалтад дарааллаар бичигдэнэ.
           </p>
         )}
       </div>

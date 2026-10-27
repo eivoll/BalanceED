@@ -37,7 +37,7 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
         subtitle={`${student.name} — долоо хоногийн хуваарийг шалгаад зөвшөөрнө үү`}
         actions={
           verification.isScheduleApproved ? (
-            <Pill tone="good"><StatusIcon level="ok" /> Зөвшөөрсөн · {verification.approvedDate ? fmtDate(verification.approvedDate) : ''}</Pill>
+            <Pill tone="good"><StatusIcon level="ok" /> Зөвшөөрсөн{verification.approvedDate ? ` · ${fmtDate(verification.approvedDate)}` : ''}</Pill>
           ) : (
             <Pill tone="bad"><StatusIcon level="warn" /> Хүлээгдэж байна</Pill>
           )
@@ -125,7 +125,7 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
             </dl>
           </Card>
 
-          <Card title="3 · AI долоо хоногийн тойм" subtitle="Эцэг эхэд зориулсан энгийн тайлбар">
+          <Card title="3 · Долоо хоногийн AI тойм" subtitle="Эцэг эхэд зориулсан энгийн тайлбар">
             <CoachCard>
               <span className="font-medium">{analysis.parentReport.progressSummaryMongolian}</span>
             </CoachCard>

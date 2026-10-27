@@ -148,16 +148,16 @@ function cleanTags(list: string[] | undefined, limit = 20): string[] {
 
 function timetableEntries(entries: { day: Day; timeSlot: string }[] | undefined): { day: Day; timeSlot: string }[] {
   const list = entries ?? [];
-  if (list.length > DAYS.length) throw new UserInputError('Долоо хоногт хамгийн ихдээ 7 өдөрт хичээл товлох боломжтой.');
+  if (list.length > DAYS.length) throw new UserInputError('Долоо хоногт 7-оос олон хичээлийн цаг оруулж болохгүй.');
   const byDay = new Map<Day, string>();
   for (const entry of list) {
-    if (!DAYS.includes(entry.day)) throw new UserInputError(`Өдөр буруу байна: ${entry.day}`);
+    if (!DAYS.includes(entry.day)) throw new UserInputError('Өдөр буруу байна — долоо хоногийн өдрүүдийн нэгийг сонгоно уу.');
     validateSlot(entry.timeSlot);
     const [start, end] = parseSlot(entry.timeSlot);
     if (end - start > 10) {
       throw new UserInputError(`${DAY_MN[entry.day]} гарагийн хичээл 10 цагаас дээш үргэлжлэх ёсгүй.`);
     }
-    if (byDay.has(entry.day)) throw new UserInputError(`${DAY_MN[entry.day]} гараг давхардаж байна.`);
+    if (byDay.has(entry.day)) throw new UserInputError(`${DAY_MN[entry.day]} гараг давхардсан — нэг өдөрт нэг хичээлийн цаг оруулна уу.`);
     byDay.set(entry.day, entry.timeSlot);
   }
   return DAYS.filter((d) => byDay.has(d)).map((day) => ({ day, timeSlot: byDay.get(day)! }));
@@ -589,7 +589,7 @@ export const resolvers = {
         throw new UserInputError('Сүүлийн огноо өнгөрсөн байна — ирээдүйн огноо сонгоно уу.');
       }
       const capacity = Math.round(input.capacity ?? 0);
-      if (capacity < 0) throw new UserInputError('Сул оны тоо сөрөг байж болохгүй.');
+      if (capacity < 0) throw new UserInputError('Сул оронгийн тоо сөрөг байж болохгүй.');
 
       const opp = db.opportunities.insert(
         {

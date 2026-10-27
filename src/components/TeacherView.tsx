@@ -149,7 +149,7 @@ export default function TeacherView({
       <Card title="Боломжуудын жагсаалт" subtitle="Нийтлэгдсэн боломж, сурагчдын бүртгэл">
         {!opps.length && (
           <p className="rounded-xl border border-line bg-page/60 p-4 text-sm text-muted">
-            Одоогоор нийтлэгдсэн боломж байхгүй — баруун талын хэлбэрээр эхний боломжоо нэмнэ үү.
+            Одоогоор нийтлэгдсэн боломж байхгүй — «Боломж нэмэх» маягтаар эхний боломжоо нэмнэ үү.
           </p>
         )}
         <ul className="grid grid-cols-1 gap-2">
