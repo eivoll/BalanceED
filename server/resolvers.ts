@@ -6,11 +6,21 @@ import {
   computeFreeSlots,
   freeSlotsFrom,
   matchOpportunities,
+  overlaps,
+  parseSlot,
+  schoolItems,
 } from './ai/analysis.js';
-import { gemmaEnabled } from './ai/gemma.js';
 import { hashPassword, normaliseEmail, verifyOrPad, verifyPassword } from './auth.js';
 import { DAYS } from '../shared/types.js';
-import type { Day, StudentProfile, UserAccount, WeeklyScheduleItem } from '../shared/types.js';
+import type {
+  Day,
+  Opportunity,
+  OpportunityView,
+  SchoolHour,
+  StudentProfile,
+  UserAccount,
+  WeeklyScheduleItem,
+} from '../shared/types.js';
 
 export interface Ctx {
   user: UserAccount | null;
@@ -29,6 +39,16 @@ const DENIAL: Record<Action, string> = {
   teach: 'Энэ үйлдлийг зөвхөн багш хийх эрхтэй.',
 };
 
+const DAY_MN: Record<Day, string> = {
+  Monday: 'Даваа',
+  Tuesday: 'Мягмар',
+  Wednesday: 'Лхагва',
+  Thursday: 'Пүрэв',
+  Friday: 'Баасан',
+  Saturday: 'Бямба',
+  Sunday: 'Ням',
+};
+
 function currentUser(ctx: Ctx): UserAccount {
   if (!ctx.user) throw new AuthenticationError('Энэ үйлдлийг хийхийн тулд эхлээд нэвтэрнэ үү.');
   return ctx.user;
@@ -44,6 +64,13 @@ function visibleStudents(user: UserAccount): StudentProfile[] {
   }
   const own = user.studentId ? db.students.byId(user.studentId) : undefined;
   return own ? [own] : [];
+}
+
+/** The student a list should be read through: self, or the parent's first child. */
+function viewerStudentId(user: UserAccount): string | null {
+  if (user.role === 'student') return user.studentId ?? null;
+  if (user.role === 'parent') return db.parentLinks.childrenOf(user.id)[0] ?? null;
+  return null;
 }
 
 function authorize(ctx: Ctx, studentId: string, action: Action): StudentProfile {
@@ -74,6 +101,9 @@ function authorizeItem(ctx: Ctx, table: 'schedule' | 'assignments' | 'exams', id
 }
 
 const SLOT_RE = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const GRADE_RE = /^([1-9]|1[0-2])(-[А-ЯЁа-яёA-Za-z]{1,2})?$/;
 
 function validateSlot(timeSlot: string) {
   if (!SLOT_RE.test(timeSlot)) throw new UserInputError(`Цагийн завсар буруу байна: "${timeSlot}" — зөв хэлбэр нь HH:MM-HH:MM`);
@@ -81,13 +111,79 @@ function validateSlot(timeSlot: string) {
   if (a >= b) throw new UserInputError(`Цагийн завсар буруу байна: "${timeSlot}" — эхлэх цаг дуусах цагаас өмнө байх ёстой`);
 }
 
+function validateDate(value: string, label: string): string {
+  const iso = value.trim();
+  if (!DATE_RE.test(iso) || Number.isNaN(new Date(`${iso}T12:00:00`).getTime())) {
+    throw new UserInputError(`${label}: огноо 2026-10-31 хэлбэрээр байх ёстой.`);
+  }
+  return iso;
+}
+
+function validateTime(value: string, label: string): string {
+  const iso = value.trim();
+  if (!TIME_RE.test(iso)) throw new UserInputError(`${label}: цаг HH:MM хэлбэрээр байх ёстой.`);
+  return iso;
+}
+
+function parseGrade(raw: string): string {
+  const grade = raw.trim();
+  if (!GRADE_RE.test(grade)) throw new UserInputError('Анги буруу байна — 10 эсвэл 11-Б гэж бичнэ үү.');
+  return grade;
+}
+
+/** Tags arrive from free-typing: blanks, case-duplicate and over-long entries never reach the database. */
+function cleanTags(list: string[] | undefined, limit = 20): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of list ?? []) {
+    const value = String(raw ?? '').trim().replace(/\s+/g, ' ').slice(0, 48);
+    const key = value.toLowerCase();
+    if (!value || seen.has(key)) continue;
+    seen.add(key);
+    out.push(value);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function timetableEntries(entries: { day: Day; timeSlot: string }[] | undefined): { day: Day; timeSlot: string }[] {
+  const list = entries ?? [];
+  if (list.length > DAYS.length) throw new UserInputError('Долоо хоногт хамгийн ихдээ 7 өдөрт хичээл товлох боломжтой.');
+  const byDay = new Map<Day, string>();
+  for (const entry of list) {
+    if (!DAYS.includes(entry.day)) throw new UserInputError(`Өдөр буруу байна: ${entry.day}`);
+    validateSlot(entry.timeSlot);
+    const [start, end] = parseSlot(entry.timeSlot);
+    if (end - start > 10) {
+      throw new UserInputError(`${DAY_MN[entry.day]} гарагийн хичээл 10 цагаас дээш үргэлжлэх ёсгүй.`);
+    }
+    if (byDay.has(entry.day)) throw new UserInputError(`${DAY_MN[entry.day]} гараг давхардаж байна.`);
+    byDay.set(entry.day, entry.timeSlot);
+  }
+  return DAYS.filter((d) => byDay.has(d)).map((day) => ({ day, timeSlot: byDay.get(day)! }));
+}
+
 function fullSchedule(studentId: string): WeeklyScheduleItem[] {
   const stored = db.schedule.byStudent(studentId).filter((i) => !i.isFreeSlot);
-  const free = freeSlotsFrom(studentId, stored);
+  const school = db.schoolHours.byStudent(studentId);
+  const free = freeSlotsFrom(studentId, stored, school);
   const dayIdx = (d: Day) => DAYS.indexOf(d);
-  return [...stored, ...free].sort(
+  return [...stored, ...schoolItems(studentId, school), ...free].sort(
     (a, b) => dayIdx(a.day) - dayIdx(b.day) || a.timeSlot.localeCompare(b.timeSlot),
   );
+}
+
+/** Adds the enrollment state the requesting student cares about to a plain opportunity row. */
+function asView(opp: Opportunity, viewerId: string | null): OpportunityView {
+  const signups = db.signups.countFor(opp.id);
+  return {
+    ...opp,
+    matchScore: null,
+    matchReasonMongolian: null,
+    enrolled: viewerId ? db.signups.opportunityIdsFor(viewerId).has(opp.id) : false,
+    signups,
+    placesLeft: opp.capacity > 0 ? Math.max(0, opp.capacity - signups) : null,
+  };
 }
 
 function parseEmail(raw: string): string {
@@ -96,9 +192,118 @@ function parseEmail(raw: string): string {
   return email;
 }
 
-function parsePassword(raw: string): string {
-  if (raw.length < 8) throw new UserInputError('Нууц үг дор хаяж 8 тэмдэгт байх ёстой.');
+function parsePassword(raw: string, who = 'Нууц үг'): string {
+  if (raw.length < 8) throw new UserInputError(`${who} дор хаяж 8 тэмдэгт байх ёстой.`);
   return raw;
+}
+
+/** Teacher-created and self-created accounts share one code path so both get the same checks. */
+interface StudentInput {
+  name: string;
+  grade: string;
+  school: string;
+  email: string;
+  password: string;
+  parentEmail?: string | null;
+  parentName?: string | null;
+  parentPassword?: string | null;
+  interests?: string[] | null;
+  skills?: string[] | null;
+  careerGoals?: string[] | null;
+  schoolHours?: { day: Day; timeSlot: string }[] | null;
+}
+
+interface CreatedStudent {
+  student: StudentProfile;
+  /** The student's own login, so self-signup can open the session straight away. */
+  accountId: string;
+}
+
+interface OpportunityInput {
+  title: string;
+  organizer: string;
+  requiredSkills: string[];
+  day: Day;
+  timeSlot: string;
+  level: 'School' | 'National' | 'Global';
+  description?: string | null;
+  location?: string | null;
+  deadline?: string | null;
+  capacity?: number | null;
+}
+
+async function buildStudent(args: StudentInput, teacherId: string | null): Promise<CreatedStudent> {
+  const name = args.name.trim();
+  if (!name) throw new UserInputError('Нэр хоосон байж болохгүй.');
+  const school = args.school.trim();
+  if (!school) throw new UserInputError('Сургуулийн нэр хоосон байж болохгүй.');
+  const email = parseEmail(args.email);
+  const password = parsePassword(args.password);
+  if (db.users.byEmail(email)) throw new UserInputError(`${email} хаяг аль хэдийн бүртгэлтэй байна.`);
+
+  const parentEmail = args.parentEmail?.trim() ? parseEmail(args.parentEmail) : '';
+  if (parentEmail === email) throw new UserInputError('Эцэг эх, сурагчийн и-мэйл хаяг ижил байж болохгүй.');
+  // The parent must never inherit the student's password; they set their own.
+  const parentPassword = parentEmail ? parsePassword((args.parentPassword ?? '').trim(), 'Эцэг эхийн нууц үг') : '';
+  if (parentEmail) {
+    const already = db.users.byEmail(parentEmail);
+    if (already && already.role !== 'parent') {
+      throw new UserInputError(`${parentEmail} хаягаар сурагч эсвэл багшийн бүртгэл аль хэдийн байна. Өөр хаяг оруулна уу.`);
+    }
+  }
+
+  const grade = parseGrade(args.grade);
+  // Everything is checked before the first row lands, so a rejected form never leaves half a student.
+  const hours = timetableEntries(args.schoolHours ?? undefined);
+
+  const student = db.students.insert(
+    {
+      name,
+      grade,
+      school,
+      aboutMe: {
+        interests: cleanTags(args.interests ?? undefined),
+        skills: cleanTags(args.skills ?? undefined),
+        careerGoals: cleanTags(args.careerGoals ?? undefined),
+      },
+      parentVerification: { isScheduleApproved: false },
+      teacherId: teacherId ?? undefined,
+    },
+    'stu',
+  );
+
+  db.schoolHours.replaceAll(student.id, hours);
+
+  const studentAccount = db.users.insert(
+    {
+      email,
+      displayName: name,
+      role: 'student',
+      passwordHash: await hashPassword(password),
+      createdAt: new Date().toISOString(),
+      studentId: student.id,
+    },
+    'usr',
+  );
+
+  if (parentEmail) {
+    const existing = db.users.byEmail(parentEmail);
+    const parentId =
+      existing?.id ??
+      db.users.insert(
+        {
+          email: parentEmail,
+          displayName: args.parentName?.trim() || 'Эцэг эх',
+          role: 'parent',
+          passwordHash: await hashPassword(parentPassword),
+          createdAt: new Date().toISOString(),
+        },
+        'usr',
+      ).id;
+    db.parentLinks.add(parentId, student.id);
+  }
+
+  return { student, accountId: studentAccount.id };
 }
 
 export const resolvers = {
@@ -112,6 +317,8 @@ export const resolvers = {
     student: (_: unknown, { id }: { id: string }, ctx: Ctx) => authorize(ctx, id, 'view'),
     schedule: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
       fullSchedule(authorize(ctx, studentId, 'view').id),
+    schoolHours: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx): SchoolHour[] =>
+      db.schoolHours.byStudent(authorize(ctx, studentId, 'view').id),
     freeSlots: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
       computeFreeSlots(authorize(ctx, studentId, 'view').id),
     assignments: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) => {
@@ -122,9 +329,9 @@ export const resolvers = {
       const owner = authorize(ctx, studentId, 'view');
       return db.exams.byStudent(owner.id).sort((a, b) => a.examDate.localeCompare(b.examDate));
     },
-    opportunities: (_: unknown, __: unknown, ctx: Ctx) => {
-      currentUser(ctx);
-      return db.opportunities.all();
+    opportunities: (_: unknown, __: unknown, ctx: Ctx): OpportunityView[] => {
+      const viewerId = viewerStudentId(currentUser(ctx));
+      return db.opportunities.all().map((o) => asView(o, viewerId));
     },
     matchedOpportunities: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) => {
       const student = authorize(ctx, studentId, 'view');
@@ -132,13 +339,11 @@ export const resolvers = {
     },
     workloadAnalysis: async (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) =>
       buildWorkloadAnalysis(authorize(ctx, studentId, 'view')),
-    classWorkload: async (_: unknown, __: unknown, ctx: Ctx) => {
+    classWorkload: (_: unknown, __: unknown, ctx: Ctx) => {
       const user = currentUser(ctx);
       if (user.role !== 'teacher') throw new ForbiddenError('Ангийн ачааллыг зөвхөн багш харах эрхтэй.');
       return buildClassWorkload(visibleStudents(user));
     },
-    aiBackend: () =>
-      gemmaEnabled ? `Gemma (${process.env.GEMMA_MODEL || 'gemma-3-27b-it'})` : 'built-in heuristic engine',
   },
 
   Mutation: {
@@ -149,6 +354,12 @@ export const resolvers = {
       if (!ok || !user) throw new UserInputError('И-мэйл эсвэл нууц үг буруу байна.');
       ctx.openSession(user.id);
       return user;
+    },
+
+    signup: async (_: unknown, { input }: { input: StudentInput }, ctx: Ctx) => {
+      const created = await buildStudent(input, null);
+      ctx.openSession(created.accountId);
+      return db.users.byId(created.accountId)!;
     },
 
     logout: (_: unknown, __: unknown, ctx: Ctx) => {
@@ -173,68 +384,10 @@ export const resolvers = {
       return true;
     },
 
-    createStudent: async (
-      _: unknown,
-      args: {
-        name: string;
-        grade: string;
-        school: string;
-        email: string;
-        password: string;
-        parentEmail?: string;
-        parentName?: string;
-      },
-      ctx: Ctx,
-    ) => {
+    createStudent: async (_: unknown, { input }: { input: StudentInput }, ctx: Ctx) => {
       const teacher = currentUser(ctx);
       if (teacher.role !== 'teacher') throw new ForbiddenError(DENIAL.teach);
-      const name = args.name.trim();
-      if (!name) throw new UserInputError('Сурагчийн нэр хоосон байж болохгүй.');
-      const email = parseEmail(args.email);
-      const password = parsePassword(args.password);
-      if (db.users.byEmail(email)) throw new UserInputError(`${email} хаяг аль хэдийн бүртгэлтэй байна.`);
-
-      const student = db.students.insert(
-        {
-          name,
-          grade: args.grade.trim(),
-          school: args.school.trim(),
-          aboutMe: { interests: [], skills: [], careerGoals: [] },
-          parentVerification: { isScheduleApproved: false },
-          teacherId: teacher.id,
-        },
-        'stu',
-      );
-      db.users.insert(
-        {
-          email,
-          displayName: name,
-          role: 'student',
-          passwordHash: await hashPassword(password),
-          createdAt: new Date().toISOString(),
-          studentId: student.id,
-        },
-        'usr',
-      );
-
-      if (args.parentEmail?.trim()) {
-        const parentEmail = parseEmail(args.parentEmail);
-        const existing = db.users.byEmail(parentEmail);
-        const parentId =
-          existing?.id ??
-          db.users.insert(
-            {
-              email: parentEmail,
-              displayName: args.parentName?.trim() || 'Эцэг эх',
-              role: 'parent',
-              passwordHash: await hashPassword(parsePassword(args.password)),
-              createdAt: new Date().toISOString(),
-            },
-            'usr',
-          ).id;
-        db.parentLinks.add(parentId, student.id);
-      }
-      return student;
+      return (await buildStudent(input, teacher.id)).student;
     },
 
     removeStudent: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
@@ -246,6 +399,8 @@ export const resolvers = {
       db.schedule.removeForStudent(id);
       db.assignments.removeForStudent(id);
       db.exams.removeForStudent(id);
+      db.schoolHours.dropForStudent(id);
+      db.signups.dropForStudent(id);
       if (account) db.users.remove(account.id);
       // A parent account created for this student only is useless once the link is gone.
       for (const parentId of parentIds) {
@@ -264,7 +419,13 @@ export const resolvers = {
       ctx: Ctx,
     ) => {
       authorize(ctx, studentId, 'edit');
-      return db.students.update(studentId, { aboutMe: { interests, skills, careerGoals } })!;
+      return db.students.update(studentId, {
+        aboutMe: {
+          interests: cleanTags(interests),
+          skills: cleanTags(skills),
+          careerGoals: cleanTags(careerGoals),
+        },
+      })!;
     },
 
     addScheduleItem: (
@@ -273,10 +434,29 @@ export const resolvers = {
       ctx: Ctx,
     ) => {
       authorize(ctx, studentId, 'edit');
+      const name = activity.trim();
+      if (!name) throw new UserInputError('Үйл ажиллагааны нэр хоосон байж болохгүй.');
       validateSlot(timeSlot);
+      const [start, end] = parseSlot(timeSlot);
+      if (end - start < 0.25) throw new UserInputError('Үйл ажиллагаа дор хаяж 15 минут үргэлжлэх ёстой.');
+
+      const atSchool = db.schoolHours.byStudent(studentId).find((s) => s.day === day);
+      if (atSchool && overlaps(parseSlot(atSchool.timeSlot), [start, end])) {
+        throw new UserInputError(
+          `${DAY_MN[day]} гарагийн сургуулийн хичээл (${atSchool.timeSlot}) давхцаж байна — хичээлийн дараах цагийг сонгоно уу.`,
+        );
+      }
+      const clash = db.schedule
+        .byStudent(studentId)
+        .filter((i) => !i.isFreeSlot && i.day === day)
+        .find((i) => overlaps(parseSlot(i.timeSlot), [start, end]));
+      if (clash) {
+        throw new UserInputError(`«${clash.activity}» (${clash.timeSlot}) үйл ажиллагаатай давхцаж байна.`);
+      }
+
       // Any schedule change invalidates prior parent verification.
       db.students.update(studentId, { parentVerification: { isScheduleApproved: false } });
-      return db.schedule.insert({ studentId, day, timeSlot, activity, isFreeSlot: false }, 'sch');
+      return db.schedule.insert({ studentId, day, timeSlot, activity: name, isFreeSlot: false, isSchool: false }, 'sch');
     },
 
     removeScheduleItem: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
@@ -284,6 +464,31 @@ export const resolvers = {
       const item = db.schedule.byId(id)!;
       db.students.update(item.studentId, { parentVerification: { isScheduleApproved: false } });
       return db.schedule.remove(id);
+    },
+
+    setSchoolHours: (
+      _: unknown,
+      { studentId, entries }: { studentId: string; entries: { day: Day; timeSlot: string }[] },
+      ctx: Ctx,
+    ) => {
+      authorize(ctx, studentId, 'edit');
+      const clean = timetableEntries(entries);
+
+      // The timetable may not sit on top of an activity that is already booked.
+      const booked = db.schedule.byStudent(studentId).filter((i) => !i.isFreeSlot);
+      for (const entry of clean) {
+        const slot = parseSlot(entry.timeSlot);
+        const clash = booked.find((i) => i.day === entry.day && overlaps(parseSlot(i.timeSlot), slot));
+        if (clash) {
+          throw new UserInputError(
+            `${DAY_MN[entry.day]} гарагийн ${entry.timeSlot} хичээл «${clash.activity}» (${clash.timeSlot}) үйл ажиллагаатай давхцаж байна.`,
+          );
+        }
+      }
+
+      db.schoolHours.replaceAll(studentId, clean);
+      db.students.update(studentId, { parentVerification: { isScheduleApproved: false } });
+      return db.schoolHours.byStudent(studentId);
     },
 
     approveSchedule: (_: unknown, { studentId, approved }: { studentId: string; approved: boolean }, ctx: Ctx) => {
@@ -307,7 +512,14 @@ export const resolvers = {
       ctx: Ctx,
     ) => {
       authorize(ctx, studentId, 'teach');
-      return db.assignments.insert({ studentId, title, subject, dueDate, isCompleted: false }, 'asg');
+      const cleanTitle = title.trim();
+      const cleanSubject = subject.trim();
+      if (!cleanTitle) throw new UserInputError('Даалгаврын гарчиг хоосон байж болохгүй.');
+      if (!cleanSubject) throw new UserInputError('Хичээлийн нэр хоосон байж болохгүй.');
+      return db.assignments.insert(
+        { studentId, title: cleanTitle, subject: cleanSubject, dueDate: validateDate(dueDate, 'Хугацаа'), isCompleted: false },
+        'asg',
+      );
     },
 
     deleteAssignment: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
@@ -321,7 +533,17 @@ export const resolvers = {
       ctx: Ctx,
     ) => {
       authorize(ctx, studentId, 'teach');
-      return db.exams.insert({ studentId, subject, examDate, time }, 'exm');
+      const cleanSubject = subject.trim();
+      if (!cleanSubject) throw new UserInputError('Хичээлийн нэр хоосон байж болохгүй.');
+      return db.exams.insert(
+        {
+          studentId,
+          subject: cleanSubject,
+          examDate: validateDate(examDate, 'Шалгалтын огноо'),
+          time: validateTime(time, 'Шалгалтын цаг'),
+        },
+        'exm',
+      );
     },
 
     deleteExam: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
@@ -331,19 +553,70 @@ export const resolvers = {
 
     createOpportunity: (
       _: unknown,
-      args: { title: string; organizer: string; requiredSkills: string[]; day: Day; timeSlot: string; level: 'School' | 'National' | 'Global' },
+      { input }: { input: OpportunityInput },
       ctx: Ctx,
-    ) => {
+    ): OpportunityView => {
       const user = currentUser(ctx);
       if (user.role === 'student') throw new ForbiddenError('Сурагч боломж нийтлэх эрхгүй.');
-      validateSlot(args.timeSlot);
-      return db.opportunities.insert(args, 'opp');
+      const title = input.title.trim();
+      const organizer = input.organizer.trim();
+      if (!title) throw new UserInputError('Боломжийн гарчиг хоосон байж болохгүй.');
+      if (!organizer) throw new UserInputError('Зохион байгуулагчийн нэр хоосон байж болохгүй.');
+      validateSlot(input.timeSlot);
+      if (!DAYS.includes(input.day)) throw new UserInputError('Өдөр буруу байна.');
+
+      const deadline = input.deadline?.trim() ? validateDate(input.deadline, 'Сүүлийн огноо') : '';
+      if (deadline && new Date(`${deadline}T12:00:00`).getTime() < Date.now() - 86_400_000) {
+        throw new UserInputError('Сүүлийн огноо өнгөрсөн байна — ирээдүйн огноо сонгоно уу.');
+      }
+      const capacity = Math.round(input.capacity ?? 0);
+      if (capacity < 0) throw new UserInputError('Сул оны тоо сөрөг байж болохгүй.');
+
+      const opp = db.opportunities.insert(
+        {
+          title,
+          organizer,
+          requiredSkills: cleanTags(input.requiredSkills),
+          day: input.day,
+          timeSlot: input.timeSlot,
+          level: input.level,
+          description: (input.description ?? '').trim().slice(0, 600),
+          location: (input.location ?? '').trim().slice(0, 120),
+          deadline,
+          capacity,
+        },
+        'opp',
+      );
+      return asView(opp, viewerStudentId(user));
     },
 
     deleteOpportunity: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
       const user = currentUser(ctx);
       if (user.role === 'student') throw new ForbiddenError('Сурагч боломж устгах эрхгүй.');
+      db.signups.dropForOpportunity(id);
       return db.opportunities.remove(id);
+    },
+
+    enrollOpportunity: (_: unknown, { opportunityId }: { opportunityId: string }, ctx: Ctx): OpportunityView => {
+      const user = currentUser(ctx);
+      if (user.role !== 'student' || !user.studentId) {
+        throw new ForbiddenError('Боломжид зөвхөн сурагч өөрөө бүртгүүлнэ.');
+      }
+      const opp = db.opportunities.byId(opportunityId);
+      if (!opp) throw new UserInputError('Боломж олдсонгүй.');
+      db.signups.add(opportunityId, user.studentId);
+      return asView(opp, user.studentId);
+    },
+
+    unenrollOpportunity: (_: unknown, { opportunityId }: { opportunityId: string }, ctx: Ctx): OpportunityView => {
+      const user = currentUser(ctx);
+      if (user.role !== 'student' || !user.studentId) {
+        throw new ForbiddenError('Бүртгэлээ зөвхөн сурагч өөрөө цуцална.');
+      }
+      const opp = db.opportunities.byId(opportunityId);
+      if (!opp) throw new UserInputError('Боломж олдсонгүй.');
+      db.signups.remove(opportunityId, user.studentId);
+      return asView(opp, user.studentId);
     },
   },
 };

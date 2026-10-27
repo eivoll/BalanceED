@@ -58,6 +58,15 @@ export interface WeeklyScheduleItem {
   timeSlot: string; // e.g. "15:00-17:00"
   activity: string;
   isFreeSlot: boolean;
+  /** Derived from the school_hours table: the weekly timetable, not a removable row. */
+  isSchool: boolean;
+}
+
+/** One weekday entry of the student's school timetable. */
+export interface SchoolHour {
+  studentId: string;
+  day: Day;
+  timeSlot: string; // e.g. "08:00-15:00"
 }
 
 export interface Assignment {
@@ -87,12 +96,35 @@ export interface Opportunity {
   day: Day;
   timeSlot: string;
   level: OpportunityLevel;
+  description: string;
+  location: string;
+  /** Last day to apply, ISO date. Empty when the opportunity has no deadline. */
+  deadline: string;
+  /** 0 means unlimited places. */
+  capacity: number;
+}
+
+/** A student's place in an opportunity — the record behind the "Элсэх" button. */
+export interface OpportunitySignup {
+  id: string;
+  opportunityId: string;
+  studentId: string;
+  createdAt: string;
 }
 
 export interface ScheduleConflict {
   examOrAssignment: string;
   date: string;
   conflictDescriptionMongolian: string;
+}
+
+/** One measured reason behind the stress number, so the rating is explainable. */
+export interface StressDriver {
+  labelMongolian: string;
+  detailMongolian: string;
+  /** Points this driver added to the stress score. */
+  impact: number;
+  tone: 'ok' | 'warn' | 'danger';
 }
 
 export interface MatchedOpportunity {
@@ -107,7 +139,9 @@ export interface WorkloadAnalysis {
   workloadAnalysis: {
     workloadScore: number; // 1-10
     status: string;
+    stressScore: number; // 0-100, measured independently of the load score
     stressRisk: 'Low' | 'Medium' | 'High';
+    stressDrivers: StressDriver[];
     aiSummaryMongolian: string;
   };
   academicProgress: {
@@ -125,9 +159,27 @@ export interface WorkloadAnalysis {
   parentReport: {
     progressSummaryMongolian: string;
   };
+  weeklyScheduleSummary: {
+    totalActivityHours: number;
+    schoolHours: number;
+    freeHours: number;
+    scheduledItems: number;
+  };
 }
 
-export interface OpportunityWithMatch extends Opportunity {
+/** An opportunity as a list carries it: match fields exist only when matching ran. */
+export interface OpportunityView extends Opportunity {
+  matchScore: string | null;
+  matchReasonMongolian: string | null;
+  /** Whether the requesting student already holds a place. */
+  enrolled: boolean;
+  /** Students already enrolled. */
+  signups: number;
+  /** null when the opportunity has no capacity limit. */
+  placesLeft: number | null;
+}
+
+export interface OpportunityWithMatch extends OpportunityView {
   matchScore: string;
   matchReasonMongolian: string;
 }

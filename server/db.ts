@@ -2,13 +2,16 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { DAYS } from '../shared/types.js';
 import type {
   Assignment,
   Day,
   Exam,
   Opportunity,
   OpportunityLevel,
+  OpportunitySignup,
   Role,
+  SchoolHour,
   StudentProfile,
   UserAccount,
   WeeklyScheduleItem,
@@ -62,6 +65,22 @@ sqlite.exec(`
     is_free_slot INTEGER NOT NULL
   );
   CREATE INDEX IF NOT EXISTS ix_schedule_student ON schedule_items (student_id);
+  /* The weekly school timetable: one row per weekday, keyed by the student. */
+  CREATE TABLE IF NOT EXISTS school_hours (
+    student_id TEXT NOT NULL,
+    day TEXT NOT NULL,
+    time_slot TEXT NOT NULL,
+    PRIMARY KEY (student_id, day)
+  );
+  CREATE TABLE IF NOT EXISTS opportunity_signups (
+    id TEXT PRIMARY KEY,
+    opportunity_id TEXT NOT NULL,
+    student_id TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (opportunity_id, student_id)
+  );
+  CREATE INDEX IF NOT EXISTS ix_signups_opportunity ON opportunity_signups (opportunity_id);
+  CREATE INDEX IF NOT EXISTS ix_signups_student ON opportunity_signups (student_id);
   CREATE TABLE IF NOT EXISTS assignments (
     id TEXT PRIMARY KEY,
     student_id TEXT NOT NULL,
@@ -86,7 +105,11 @@ sqlite.exec(`
     required_skills TEXT NOT NULL,
     day TEXT NOT NULL,
     time_slot TEXT NOT NULL,
-    level TEXT NOT NULL
+    level TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    location TEXT NOT NULL DEFAULT '',
+    deadline TEXT NOT NULL DEFAULT '',
+    capacity INTEGER NOT NULL DEFAULT 0
   );
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
@@ -120,6 +143,11 @@ const hasColumn = (table: string, column: string): boolean =>
 
 if (!hasColumn('students', 'teacher_id')) sqlite.exec('ALTER TABLE students ADD COLUMN teacher_id TEXT');
 if (!hasColumn('users', 'student_id')) sqlite.exec('ALTER TABLE users ADD COLUMN student_id TEXT');
+// Opportunities grew detail fields after the first demo databases were created.
+if (!hasColumn('opportunities', 'description')) sqlite.exec("ALTER TABLE opportunities ADD COLUMN description TEXT NOT NULL DEFAULT ''");
+if (!hasColumn('opportunities', 'location')) sqlite.exec("ALTER TABLE opportunities ADD COLUMN location TEXT NOT NULL DEFAULT ''");
+if (!hasColumn('opportunities', 'deadline')) sqlite.exec("ALTER TABLE opportunities ADD COLUMN deadline TEXT NOT NULL DEFAULT ''");
+if (!hasColumn('opportunities', 'capacity')) sqlite.exec('ALTER TABLE opportunities ADD COLUMN capacity INTEGER NOT NULL DEFAULT 0');
 
 /**
  * SQLite-backed table with the same surface the resolvers and analytics use.
@@ -285,6 +313,7 @@ const schedule = new StudentScoped<WeeklyScheduleItem>(
     timeSlot: text(r.time_slot),
     activity: text(r.activity),
     isFreeSlot: Number(r.is_free_slot) === 1,
+    isSchool: false,
   }),
 );
 
@@ -317,8 +346,20 @@ const exams = new StudentScoped<Exam>(
 
 const opportunities = new SqlCollection<Opportunity>(
   'opportunities',
-  ['id', 'title', 'organizer', 'required_skills', 'day', 'time_slot', 'level'],
-  (e) => [e.id, e.title, e.organizer, json(e.requiredSkills), e.day, e.timeSlot, e.level],
+  ['id', 'title', 'organizer', 'required_skills', 'day', 'time_slot', 'level', 'description', 'location', 'deadline', 'capacity'],
+  (e) => [
+    e.id,
+    e.title,
+    e.organizer,
+    json(e.requiredSkills),
+    e.day,
+    e.timeSlot,
+    e.level,
+    e.description,
+    e.location,
+    e.deadline,
+    e.capacity,
+  ],
   (r) => ({
     id: text(r.id),
     title: text(r.title),
@@ -327,11 +368,86 @@ const opportunities = new SqlCollection<Opportunity>(
     day: text(r.day) as Day,
     timeSlot: text(r.time_slot),
     level: text(r.level) as OpportunityLevel,
+    description: text(r.description),
+    location: text(r.location),
+    deadline: text(r.deadline),
+    capacity: Number(r.capacity),
   }),
 );
 
-const USER_COLS = ['id', 'email', 'display_name', 'role', 'password_hash', 'created_at', 'student_id'] as const;
-const userFromRow = (r: Row): UserAccount => ({
+/**
+ * The school timetable is read and written as a whole week, so it does not need
+ * the row-id lifecycle the other tables have.
+ */
+const stmtSchoolByStudent = sqlite.prepare('SELECT student_id, day, time_slot FROM school_hours WHERE student_id = ?');
+const stmtSchoolDrop = sqlite.prepare('DELETE FROM school_hours WHERE student_id = ?');
+const stmtSchoolUpsert = sqlite.prepare(
+  'INSERT INTO school_hours (student_id, day, time_slot) VALUES (?, ?, ?) ON CONFLICT (student_id, day) DO UPDATE SET time_slot = excluded.time_slot',
+);
+const weekOrder = (d: string) => DAYS.indexOf(d as Day);
+
+const schoolHours = {
+  byStudent(studentId: string): SchoolHour[] {
+    return (stmtSchoolByStudent.all(studentId) as Row[])
+      .map((r) => ({ studentId: text(r.student_id), day: text(r.day) as Day, timeSlot: text(r.time_slot) }))
+      .sort((a, b) => weekOrder(a.day) - weekOrder(b.day));
+  },
+  /** One transaction, so a timetable is never left half-saved. */
+  replaceAll(studentId: string, entries: { day: Day; timeSlot: string }[]): SchoolHour[] {
+    sqlite.exec('BEGIN');
+    try {
+      stmtSchoolDrop.run(studentId);
+      for (const e of entries) stmtSchoolUpsert.run(studentId, e.day, e.timeSlot);
+      sqlite.exec('COMMIT');
+    } catch (err) {
+      sqlite.exec('ROLLBACK');
+      throw err;
+    }
+    return schoolHours.byStudent(studentId);
+  },
+  dropForStudent(studentId: string): number {
+    return Number(stmtSchoolDrop.run(studentId).changes);
+  },
+};
+
+const stmtSignupAdd = sqlite.prepare(
+  'INSERT INTO opportunity_signups (id, opportunity_id, student_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (opportunity_id, student_id) DO NOTHING',
+);
+const stmtSignupDrop = sqlite.prepare('DELETE FROM opportunity_signups WHERE opportunity_id = ? AND student_id = ?');
+const stmtSignupCount = sqlite.prepare('SELECT COUNT(*) AS n FROM opportunity_signups WHERE opportunity_id = ?');
+const stmtSignupIds = sqlite.prepare('SELECT opportunity_id FROM opportunity_signups WHERE student_id = ?');
+const stmtSignupDropOpp = sqlite.prepare('DELETE FROM opportunity_signups WHERE opportunity_id = ?');
+const stmtSignupDropStudent = sqlite.prepare('DELETE FROM opportunity_signups WHERE student_id = ?');
+const stmtSignupCounts = sqlite.prepare('SELECT opportunity_id, COUNT(*) AS n FROM opportunity_signups GROUP BY opportunity_id');
+
+const signups = {
+  /** False when the student already held a place. */
+  add(opportunityId: string, studentId: string): boolean {
+    const id = `sup_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+    return Number(stmtSignupAdd.run(id, opportunityId, studentId, new Date().toISOString()).changes) > 0;
+  },
+  remove(opportunityId: string, studentId: string): boolean {
+    return Number(stmtSignupDrop.run(opportunityId, studentId).changes) > 0;
+  },
+  countFor(opportunityId: string): number {
+    return Number((stmtSignupCount.get(opportunityId) as Row).n);
+  },
+  /** One GROUP BY for a whole list, so the hub never pays a query per card. */
+  counts(): Map<string, number> {
+    return new Map((stmtSignupCounts.all() as Row[]).map((r) => [text(r.opportunity_id), Number(r.n)]));
+  },
+  opportunityIdsFor(studentId: string): Set<string> {
+    return new Set((stmtSignupIds.all(studentId) as Row[]).map((r) => text(r.opportunity_id)));
+  },
+  dropForOpportunity(opportunityId: string): number {
+    return Number(stmtSignupDropOpp.run(opportunityId).changes);
+  },
+  dropForStudent(studentId: string): number {
+    return Number(stmtSignupDropStudent.run(studentId).changes);
+  },
+};
+
+const USER_COLS = ['id', 'email', 'display_name', 'role', 'password_hash', 'created_at', 'student_id'] as const;const userFromRow = (r: Row): UserAccount => ({
   id: text(r.id),
   email: text(r.email),
   displayName: text(r.display_name),
@@ -428,6 +544,15 @@ const tables: Tables = {
   opportunities,
   users,
   linkParent: parentLinks.add,
+  addSignup(opportunityId, studentId) {
+    signups.add(opportunityId, studentId);
+  },
+  setSchoolHours(studentId, entries) {
+    schoolHours.replaceAll(studentId, entries);
+  },
+  hasSchoolHours(studentId) {
+    return schoolHours.byStudent(studentId).length > 0;
+  },
   assignUnownedStudentsTo(teacherId: string) {
     let adopted = 0;
     for (const student of students.all()) {
@@ -448,4 +573,4 @@ export async function ensureSeeded(): Promise<void> {
   await seedIfEmpty(tables);
 }
 
-export const db = { students, schedule, assignments, exams, opportunities, users, sessions, parentLinks };
+export const db = { students, schedule, assignments, exams, opportunities, users, sessions, parentLinks, schoolHours, signups };

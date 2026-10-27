@@ -21,6 +21,40 @@ export const typeDefs = /* GraphQL */ `
     teacher
   }
 
+  input SchoolHourInput {
+    day: Day!
+    timeSlot: String!
+  }
+
+  """Everything one form collects to bring a student and their login into being."""
+  input StudentInput {
+    name: String!
+    grade: String!
+    school: String!
+    email: String!
+    password: String!
+    parentName: String
+    parentEmail: String
+    parentPassword: String
+    interests: [String!]
+    skills: [String!]
+    careerGoals: [String!]
+    schoolHours: [SchoolHourInput!]
+  }
+
+  input OpportunityInput {
+    title: String!
+    organizer: String!
+    requiredSkills: [String!]!
+    day: Day!
+    timeSlot: String!
+    level: OpportunityLevel!
+    description: String
+    location: String
+    deadline: String
+    capacity: Int
+  }
+
   type AuthUser {
     id: ID!
     email: String!
@@ -57,6 +91,14 @@ export const typeDefs = /* GraphQL */ `
     timeSlot: String!
     activity: String!
     isFreeSlot: Boolean!
+    """The weekly school timetable: shown in the grid, edited a whole week at a time."""
+    isSchool: Boolean!
+  }
+
+  type SchoolHour {
+    studentId: ID!
+    day: Day!
+    timeSlot: String!
   }
 
   type Assignment {
@@ -84,8 +126,19 @@ export const typeDefs = /* GraphQL */ `
     day: Day!
     timeSlot: String!
     level: OpportunityLevel!
+    description: String!
+    location: String!
+    """Last day to apply; empty when the opportunity stays open."""
+    deadline: String!
+    """0 means the place count is unlimited."""
+    capacity: Int!
     matchScore: String
     matchReasonMongolian: String
+    """Whether the student viewing this list already holds a place."""
+    enrolled: Boolean!
+    signups: Int!
+    """null when there is no capacity limit."""
+    placesLeft: Int
   }
 
   type ScheduleConflict {
@@ -94,10 +147,21 @@ export const typeDefs = /* GraphQL */ `
     conflictDescriptionMongolian: String!
   }
 
+  type StressDriver {
+    labelMongolian: String!
+    detailMongolian: String!
+    """Points this driver added to the stress score."""
+    impact: Float!
+    tone: String!
+  }
+
   type WorkloadInfo {
     workloadScore: Float!
     status: String!
+    """0-100, measured from deadlines, recovery time and timetable pressure."""
+    stressScore: Int!
     stressRisk: String!
+    stressDrivers: [StressDriver!]!
     aiSummaryMongolian: String!
   }
 
@@ -105,6 +169,7 @@ export const typeDefs = /* GraphQL */ `
     totalAssignments: Int!
     completedAssignments: Int!
     completionPercentage: Int!
+    overdueAssignments: Int!
     upcomingExamsCount: Int!
     scheduleConflicts: [ScheduleConflict!]!
   }
@@ -127,6 +192,8 @@ export const typeDefs = /* GraphQL */ `
 
   type WeeklyScheduleSummary {
     totalActivityHours: Float!
+    schoolHours: Float!
+    freeHours: Float!
     scheduledItems: Int!
   }
 
@@ -146,7 +213,10 @@ export const typeDefs = /* GraphQL */ `
     grade: String!
     workloadScore: Float!
     status: String!
+    stressScore: Int!
     stressRisk: String!
+    """The single biggest contributor to that student's stress, in Mongolian."""
+    topDriver: String
   }
 
   type Query {
@@ -154,6 +224,7 @@ export const typeDefs = /* GraphQL */ `
     students: [StudentProfile!]!
     student(id: ID!): StudentProfile
     schedule(studentId: ID!): [WeeklyScheduleItem!]!
+    schoolHours(studentId: ID!): [SchoolHour!]!
     freeSlots(studentId: ID!): [WeeklyScheduleItem!]!
     assignments(studentId: ID!): [Assignment!]!
     exams(studentId: ID!): [Exam!]!
@@ -161,22 +232,15 @@ export const typeDefs = /* GraphQL */ `
     matchedOpportunities(studentId: ID!): [Opportunity!]!
     workloadAnalysis(studentId: ID!): WorkloadAnalysis
     classWorkload: [ClassWorkloadRow!]!
-    aiBackend: String!
   }
 
   type Mutation {
     login(email: String!, password: String!): AuthUser!
+    """Public registration: creates the student, their login, the timetable and, optionally, the parent link."""
+    signup(input: StudentInput!): AuthUser!
     logout: Boolean!
     changePassword(currentPassword: String!, newPassword: String!): Boolean!
-    createStudent(
-      name: String!
-      grade: String!
-      school: String!
-      email: String!
-      password: String!
-      parentEmail: String
-      parentName: String
-    ): StudentProfile!
+    createStudent(input: StudentInput!): StudentProfile!
     removeStudent(id: ID!): Boolean!
     updateAboutMe(
       studentId: ID!
@@ -186,20 +250,17 @@ export const typeDefs = /* GraphQL */ `
     ): StudentProfile!
     addScheduleItem(studentId: ID!, day: Day!, timeSlot: String!, activity: String!): WeeklyScheduleItem!
     removeScheduleItem(id: ID!): Boolean!
+    """Replaces the whole week; an empty list clears the timetable."""
+    setSchoolHours(studentId: ID!, entries: [SchoolHourInput!]!): [SchoolHour!]!
     approveSchedule(studentId: ID!, approved: Boolean!): StudentProfile!
     toggleAssignment(id: ID!, isCompleted: Boolean!): Assignment
     createAssignment(studentId: ID!, title: String!, subject: String!, dueDate: String!): Assignment!
     deleteAssignment(id: ID!): Boolean!
     createExam(studentId: ID!, subject: String!, examDate: String!, time: String!): Exam!
     deleteExam(id: ID!): Boolean!
-    createOpportunity(
-      title: String!
-      organizer: String!
-      requiredSkills: [String!]!
-      day: Day!
-      timeSlot: String!
-      level: OpportunityLevel!
-    ): Opportunity!
+    createOpportunity(input: OpportunityInput!): Opportunity!
     deleteOpportunity(id: ID!): Boolean!
+    enrollOpportunity(opportunityId: ID!): Opportunity!
+    unenrollOpportunity(opportunityId: ID!): Opportunity!
   }
 `;

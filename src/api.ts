@@ -38,6 +38,14 @@ export async function attempt(action: () => Promise<unknown>): Promise<string | 
 const STUDENT_FIELDS =
   'id name grade school aboutMe { interests skills careerGoals } parentVerification { isScheduleApproved approvedDate }';
 
+const OPPORTUNITY_FIELDS =
+  'id title organizer requiredSkills day timeSlot level description location deadline capacity enrolled signups placesLeft';
+
+export interface SchoolHourInput {
+  day: string;
+  timeSlot: string;
+}
+
 export const A = {
   me: () => gql<{ me: AuthUserDTO | null }>(
     `{ me { id email displayName role students { ${STUDENT_FIELDS} } } }`,
@@ -47,6 +55,11 @@ export const A = {
       `mutation ($e: String!, $p: String!) { login(email: $e, password: $p) { id email displayName role students { ${STUDENT_FIELDS} } } }`,
       { e: email, p: password },
     ).then((d) => d.login),
+  signup: (input: SignupInput) =>
+    gql<{ signup: AuthUserDTO }>(
+      `mutation ($i: SignupInput!) { signup(input: $i) { id email displayName role students { ${STUDENT_FIELDS} } } }`,
+      { i: input },
+    ).then((d) => d.signup),
   logout: () => gql(`mutation { logout }`),
   changePassword: (currentPassword: string, newPassword: string) =>
     gql(`mutation ($c: String!, $n: String!) { changePassword(currentPassword: $c, newPassword: $n) }`, {
@@ -60,7 +73,11 @@ export const Q = {
     `{ students { ${STUDENT_FIELDS} } }`,
   ),
   schedule: (studentId: string) => gql<{ schedule: ScheduleItemDTO[] }>(
-    `query ($id: ID!) { schedule(studentId: $id) { id studentId day timeSlot activity isFreeSlot } }`,
+    `query ($id: ID!) { schedule(studentId: $id) { id studentId day timeSlot activity isFreeSlot isSchool } }`,
+    { id: studentId },
+  ),
+  schoolHours: (studentId: string) => gql<{ schoolHours: SchoolHourDTO[] }>(
+    `query ($id: ID!) { schoolHours(studentId: $id) { studentId day timeSlot } }`,
     { id: studentId },
   ),
   assignments: (studentId: string) => gql<{ assignments: AssignmentDTO[] }>(
@@ -72,28 +89,31 @@ export const Q = {
     { id: studentId },
   ),
   opportunities: () => gql<{ opportunities: OpportunityDTO[] }>(
-    `{ opportunities { id title organizer requiredSkills day timeSlot level } }`,
+    `{ opportunities { ${OPPORTUNITY_FIELDS} } }`,
   ),
   matched: (studentId: string) => gql<{ matchedOpportunities: OpportunityDTO[] }>(
-    `query ($id: ID!) { matchedOpportunities(studentId: $id) { id title organizer requiredSkills day timeSlot level matchScore matchReasonMongolian } }`,
+    `query ($id: ID!) { matchedOpportunities(studentId: $id) { ${OPPORTUNITY_FIELDS} matchScore matchReasonMongolian } }`,
     { id: studentId },
   ),
   analysis: (studentId: string) => gql<{ workloadAnalysis: AnalysisDTO }>(
     `query ($id: ID!) {
       workloadAnalysis(studentId: $id) {
         studentName
-        workloadAnalysis { workloadScore status stressRisk aiSummaryMongolian }
-        academicProgress { totalAssignments completedAssignments completionPercentage upcomingExamsCount scheduleConflicts { examOrAssignment date conflictDescriptionMongolian } }
+        workloadAnalysis {
+          workloadScore status stressScore stressRisk aiSummaryMongolian
+          stressDrivers { labelMongolian detailMongolian impact tone }
+        }
+        academicProgress { totalAssignments completedAssignments completionPercentage overdueAssignments upcomingExamsCount scheduleConflicts { examOrAssignment date conflictDescriptionMongolian } }
         matchedOpportunities { opportunityId title matchScore matchReasonMongolian }
         teacherRecommendations { deadlineAdjustments examPrepAdvice }
         parentReport { progressSummaryMongolian }
-        weeklyScheduleSummary { totalActivityHours scheduledItems }
+        weeklyScheduleSummary { totalActivityHours schoolHours freeHours scheduledItems }
       }
     }`,
     { id: studentId },
   ),
   classWorkload: () => gql<{ classWorkload: ClassRowDTO[] }>(
-    `{ classWorkload { studentId studentName grade workloadScore status stressRisk } }`,
+    `{ classWorkload { studentId studentName grade workloadScore status stressScore stressRisk topDriver } }`,
   ),
 };
 
@@ -108,6 +128,10 @@ export const M = {
     }`, { id: studentId, day, slot: timeSlot, act: activity }),
   removeScheduleItem: (id: string) =>
     gql(`mutation ($id: ID!) { removeScheduleItem(id: $id) }`, { id }),
+  setSchoolHours: (studentId: string, entries: SchoolHourInput[]) =>
+    gql(`mutation ($id: ID!, $e: [SchoolHourInput!]!) {
+      setSchoolHours(studentId: $id, entries: $e) { studentId day timeSlot }
+    }`, { id: studentId, e: entries }),
   approveSchedule: (studentId: string, approved: boolean) =>
     gql(`mutation ($id: ID!, $ok: Boolean!) {
       approveSchedule(studentId: $id, approved: $ok) { id parentVerification { isScheduleApproved approvedDate } }
@@ -122,52 +146,62 @@ export const M = {
     gql(`mutation ($id: ID!, $s: String!, $d: String!, $t: String!) {
       createExam(studentId: $id, subject: $s, examDate: $d, time: $t) { id }
     }`, { id: studentId, s: subject, d: examDate, t: time }),
-  createOpportunity: (args: { title: string; organizer: string; requiredSkills: string[]; day: string; timeSlot: string; level: string }) =>
-    gql(`mutation ($a: String!, $o: String!, $sk: [String!]!, $d: Day!, $ts: String!, $lv: OpportunityLevel!) {
-      createOpportunity(title: $a, organizer: $o, requiredSkills: $sk, day: $d, timeSlot: $ts, level: $lv) { id }
-    }`, { a: args.title, o: args.organizer, sk: args.requiredSkills, d: args.day, ts: args.timeSlot, lv: args.level }),
-  createStudent: (args: { name: string; grade: string; school: string; email: string; password: string; parentEmail?: string; parentName?: string }) =>
-    gql(`mutation ($n: String!, $g: String!, $s: String!, $e: String!, $p: String!, $pe: String, $pn: String) {
-      createStudent(name: $n, grade: $g, school: $s, email: $e, password: $p, parentEmail: $pe, parentName: $pn) { id }
-    }`, {
-      n: args.name,
-      g: args.grade,
-      s: args.school,
-      e: args.email,
-      p: args.password,
-      pe: args.parentEmail || undefined,
-      pn: args.parentName || undefined,
-    }),
+  createOpportunity: (args: OpportunityInput) =>
+    gql(`mutation ($i: OpportunityInput!) { createOpportunity(input: $i) { id } }`, { i: args }),
+  createStudent: (args: StudentInput) =>
+    gql(`mutation ($i: StudentInput!) { createStudent(input: $i) { id } }`, { i: args }),
   removeStudent: (id: string) => gql(`mutation ($id: ID!) { removeStudent(id: $id) }`, { id }),
+  enrollOpportunity: (opportunityId: string) =>
+    gql<{ enrollOpportunity: OpportunityDTO }>(
+      `mutation ($id: ID!) { enrollOpportunity(opportunityId: $id) { ${OPPORTUNITY_FIELDS} } }`,
+      { id: opportunityId },
+    ).then((d) => d.enrollOpportunity),
+  unenrollOpportunity: (opportunityId: string) =>
+    gql<{ unenrollOpportunity: OpportunityDTO }>(
+      `mutation ($id: ID!) { unenrollOpportunity(opportunityId: $id) { ${OPPORTUNITY_FIELDS} } }`,
+      { id: opportunityId },
+    ).then((d) => d.unenrollOpportunity),
 };
 
 export interface ScheduleItemDTO {
-  id: string; studentId: string; day: string; timeSlot: string; activity: string; isFreeSlot: boolean;
+  id: string; studentId: string; day: string; timeSlot: string; activity: string;
+  isFreeSlot: boolean; isSchool: boolean;
 }
+export interface SchoolHourDTO { studentId: string; day: string; timeSlot: string }
 export interface AssignmentDTO {
   id: string; studentId: string; title: string; subject: string; dueDate: string; isCompleted: boolean;
 }
 export interface ExamDTO { id: string; studentId: string; subject: string; examDate: string; time: string }
 export interface OpportunityDTO {
   id: string; title: string; organizer: string; requiredSkills: string[];
-  day: string; timeSlot: string; level: string; matchScore?: string; matchReasonMongolian?: string;
+  day: string; timeSlot: string; level: string;
+  description: string; location: string; deadline: string; capacity: number;
+  enrolled: boolean; signups: number; placesLeft: number | null;
+  matchScore?: string | null; matchReasonMongolian?: string | null;
+}
+export interface StressDriverDTO {
+  labelMongolian: string; detailMongolian: string; impact: number; tone: 'ok' | 'warn' | 'danger';
 }
 export interface AnalysisDTO {
   studentName: string;
-  workloadAnalysis: { workloadScore: number; status: string; stressRisk: string; aiSummaryMongolian: string };
+  workloadAnalysis: {
+    workloadScore: number; status: string; stressScore: number; stressRisk: string;
+    stressDrivers: StressDriverDTO[]; aiSummaryMongolian: string;
+  };
   academicProgress: {
     totalAssignments: number; completedAssignments: number; completionPercentage: number;
-    upcomingExamsCount: number;
+    overdueAssignments: number; upcomingExamsCount: number;
     scheduleConflicts: { examOrAssignment: string; date: string; conflictDescriptionMongolian: string }[];
   };
   matchedOpportunities: { opportunityId: string; title: string; matchScore: string; matchReasonMongolian: string }[];
   teacherRecommendations: { deadlineAdjustments: string; examPrepAdvice: string };
   parentReport: { progressSummaryMongolian: string };
-  weeklyScheduleSummary: { totalActivityHours: number; scheduledItems: number };
+  weeklyScheduleSummary: { totalActivityHours: number; schoolHours: number; freeHours: number; scheduledItems: number };
 }
 export interface ClassRowDTO {
   studentId: string; studentName: string; grade: string;
-  workloadScore: number; status: string; stressRisk: string;
+  workloadScore: number; status: string; stressScore: number; stressRisk: string;
+  topDriver: string | null;
 }
 export interface StudentDTO {
   id: string; name: string; grade: string; school: string;
@@ -184,4 +218,44 @@ export interface AuthUserDTO {
   role: RoleDTO;
   /** Profiles this account may see — the server already filtered them. */
   students: StudentDTO[];
+}
+
+export interface SignupInput {
+  name: string;
+  grade: string;
+  school: string;
+  email: string;
+  password: string;
+  parentName?: string;
+  parentEmail?: string;
+  parentPassword?: string;
+  interests?: string[];
+  skills?: string[];
+  careerGoals?: string[];
+  schoolHours: SchoolHourInput[];
+}
+
+export interface StudentInput {
+  name: string;
+  grade: string;
+  school: string;
+  email: string;
+  password: string;
+  parentEmail?: string;
+  parentName?: string;
+  parentPassword?: string;
+  schoolHours?: SchoolHourInput[];
+}
+
+export interface OpportunityInput {
+  title: string;
+  organizer: string;
+  requiredSkills: string[];
+  day: string;
+  timeSlot: string;
+  level: string;
+  description?: string;
+  location?: string;
+  deadline?: string;
+  capacity?: number;
 }
