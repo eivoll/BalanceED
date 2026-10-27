@@ -36,7 +36,7 @@ export async function attempt(action: () => Promise<unknown>): Promise<string | 
 }
 
 const STUDENT_FIELDS =
-  'id name grade school aboutMe { interests skills careerGoals } parentVerification { isScheduleApproved approvedDate }';
+  'id name grade school aboutMe { interests skills careerGoals } parentVerification { isScheduleApproved approvedDate } hasParent';
 
 const OPPORTUNITY_FIELDS =
   'id title organizer requiredSkills day timeSlot level description location deadline capacity enrolled signups placesLeft';
@@ -210,6 +210,7 @@ export interface StudentDTO {
   id: string; name: string; grade: string; school: string;
   aboutMe: { interests: string[]; skills: string[]; careerGoals: string[] };
   parentVerification: { isScheduleApproved: boolean; approvedDate?: string };
+  hasParent: boolean;
 }
 
 export type RoleDTO = 'student' | 'parent' | 'teacher';

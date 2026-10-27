@@ -333,6 +333,10 @@ export const resolvers = {
     students: (user: UserAccount) => visibleStudents(user),
   },
 
+  StudentProfile: {
+    hasParent: (student: StudentProfile) => db.parentLinks.parentsOf(student.id).length > 0,
+  },
+
   Query: {
     me: (_: unknown, __: unknown, ctx: Ctx) => ctx.user,
     students: (_: unknown, __: unknown, ctx: Ctx) => visibleStudents(currentUser(ctx)),

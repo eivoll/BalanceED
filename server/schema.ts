@@ -82,6 +82,8 @@ export const typeDefs = /* GraphQL */ `
     school: String!
     aboutMe: AboutMe!
     parentVerification: ParentVerification!
+    """False when the student registered without a parent, so nothing is being waited on."""
+    hasParent: Boolean!
   }
 
   type WeeklyScheduleItem {

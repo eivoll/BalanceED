@@ -76,7 +76,10 @@ export default function StudentView({
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/40 bg-warn/10 px-2.5 py-1 text-[11px] font-bold text-warn">
-                  <StatusIcon level="warn" /> Эцэг эхийн баталгаажуулалт хүлээгдэж байна
+                  <StatusIcon level="warn" />
+                  {student.hasParent
+                    ? 'Эцэг эхийн баталгаажуулалт хүлээгдэж байна'
+                    : 'Эцэг эх холбоогүй — хуваарь баталгаажуулаагүй'}
                 </span>
               )}
             </div>
