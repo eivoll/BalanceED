@@ -65,8 +65,8 @@ const SHAPES: Record<IconName, ReactNode> = {
   ),
   bulb: (
     <>
-      <path d="M12 3.2a6 6 0 0 0-3.5 10.9c.6.5.9 1.1.9 1.8v.5h5.2v-.5c0-.7.3-1.3.9-1.8A6 6 0 0 0 12 3.2z" />
-      <path d="M9.6 19.4h4.8M10.4 21.6h3.2" />
+      <path d="M12 2.8a5.6 5.6 0 0 0-3.4 10.1c.6.5 1 1.2 1.1 2h4.6c.1-.8.5-1.5 1.1-2A5.6 5.6 0 0 0 12 2.8z" />
+      <path d="M9.7 17h4.6M10.7 19.6h2.6" />
     </>
   ),
   calendar: (
@@ -266,8 +266,8 @@ export function BrandMark({ size = 22, className }: { size?: number; className?:
       <circle cx="12" cy="3.9" r="1.3" />
       <path d="M12 5.2v14.4" />
       <path d="M4.4 7.4h15.2" />
-      <path d="M4.4 7.4v3.4M19.6 7.4v3.4" />
-      <path d="M2 10.8a2.4 2.4 0 0 0 4.8 0M17.2 10.8a2.4 2.4 0 0 0 4.8 0" />
+      <path d="M2 12.2h4.8L4.4 7.4 2 12.2z" />
+      <path d="M17.2 12.2H22l-2.4-4.8-2.4 4.8z" />
       <path d="M8.6 19.6h6.8" />
     </svg>
   );
