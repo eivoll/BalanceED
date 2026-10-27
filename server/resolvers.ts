@@ -30,13 +30,14 @@ export interface Ctx {
   closeSession(): void;
 }
 
-type Action = 'view' | 'edit' | 'approve' | 'teach';
+type Action = 'view' | 'edit' | 'approve' | 'teach' | 'remove';
 
 const DENIAL: Record<Action, string> = {
   view: 'Энэ сурагчийн мэдээллийг харах эрх танд байхгүй.',
   edit: 'Энэ сурагчийн мэдээллийг өөрчлөх эрх танд байхгүй.',
   approve: 'Хуваарийг зөвхөн тухайн сурагчийн эцэг эх л зөвшөөрч болно.',
   teach: 'Энэ үйлдлийг зөвхөн багш хийх эрхтэй.',
+  remove: 'Бүртгэлийг зөвхөн сурагч өөрөө эсвэл түүний багш устгаж болно.',
 };
 
 const DAY_MN: Record<Day, string> = {
@@ -87,7 +88,9 @@ function authorize(ctx: Ctx, studentId: string, action: Action): StudentProfile 
         ? isTeacherOf || isSelf
         : action === 'approve'
           ? isParentOf
-          : isTeacherOf;
+          : action === 'remove'
+            ? isTeacherOf || isSelf
+            : isTeacherOf;
   if (!allowed) throw new ForbiddenError(DENIAL[action]);
   return student;
 }
@@ -410,7 +413,8 @@ export const resolvers = {
     },
 
     removeStudent: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
-      authorize(ctx, id, 'teach');
+      // A teacher drops a roster entry; a student who signed up alone must never be stuck with the account.
+      authorize(ctx, id, 'remove');
       const account = db.users.byStudent(id);
       if (account) db.sessions.dropAllForUser(account.id);
       const parentIds = db.parentLinks.parentsOf(id);

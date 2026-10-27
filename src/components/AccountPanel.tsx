@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { A, attempt, type AuthUserDTO } from '../api';
+import { A, attempt, M, type AuthUserDTO } from '../api';
 import { Icon } from './icons';
 import { StatusIcon } from './shared';
 
@@ -18,6 +18,7 @@ export default function AccountPanel({
   const [next, setNext] = useState('');
   const [feedback, setFeedback] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,6 +54,16 @@ export default function AccountPanel({
     onClose();
     if (problem) setFeedback({ text: problem, ok: false });
     else onSignedOut();
+  }
+
+  async function deleteAccount() {
+    setBusy(true);
+    // The server drops every session of this account, so the cookie dies with it.
+    const problem = await attempt(() => M.removeStudent(user.students[0].id));
+    setBusy(false);
+    if (problem) return setFeedback({ text: problem, ok: false });
+    onClose();
+    onSignedOut();
   }
 
   return (
@@ -108,6 +119,39 @@ export default function AccountPanel({
       >
         <Icon name="logout" size={15} /> Гарах
       </button>
+
+      {user.role === 'student' && user.students[0] && (
+        <div className="mt-3 border-t border-line/70 pt-3">
+          {confirmDelete ? (
+            <>
+              <p className="text-[11px] leading-relaxed text-muted">
+                Хуваарь, даалгавар, эцэг эхийн холбоос хамт устана — энэ үйлдэл буцахгүй.
+              </p>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={deleteAccount}
+                  className="btn-danger flex-1 py-1.5 text-xs"
+                >
+                  {busy ? 'Устгаж байна…' : 'Тийм, устгах'}
+                </button>
+                <button type="button" onClick={() => setConfirmDelete(false)} className="btn-soft px-3 py-1.5 text-xs">
+                  Үгүй
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-line py-2 text-xs font-bold text-muted transition-all duration-150 hover:border-danger/40 hover:text-danger"
+            >
+              <Icon name="trash" size={15} /> Бүртгэл устгах
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
