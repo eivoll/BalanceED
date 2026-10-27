@@ -13,7 +13,6 @@ export type IconName =
   | 'clipboard'
   | 'clock'
   | 'close'
-  | 'code'
   | 'cpu'
   | 'heart'
   | 'logout'
@@ -29,7 +28,6 @@ export type IconName =
   | 'send'
   | 'sparkles'
   | 'speech'
-  | 'sprout'
   | 'star'
   | 'sun'
   | 'target'
@@ -91,12 +89,11 @@ const SHAPES: Record<IconName, ReactNode> = {
     </>
   ),
   close: <path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6" />,
-  code: <path d="M9 7.4 4.4 12 9 16.6M15 7.4 19.6 12 15 16.6" />,
   cpu: (
     <>
-      <rect x="6.4" y="6.4" width="11.2" height="11.2" rx="2.4" />
-      <rect x="9.6" y="9.6" width="4.8" height="4.8" rx="1.2" />
-      <path d="M10 3.4v3M14 3.4v3M10 17.6v3M14 17.6v3M3.4 10h3M3.4 14h3M17.6 10h3M17.6 14h3" />
+      <rect x="6.6" y="6.6" width="10.8" height="10.8" rx="2.6" />
+      <rect x="10.2" y="10.2" width="3.6" height="3.6" rx="1" />
+      <path d="M12 3.2v3.4M12 17.4v3.4M3.2 12h3.4M17.4 12h3.4" />
     </>
   ),
   heart: (
@@ -126,17 +123,18 @@ const SHAPES: Record<IconName, ReactNode> = {
   ),
   octagon: (
     <>
-      <path d="M8.3 3.4h7.4L20.6 8.3v7.4L15.7 20.6H8.3L3.4 15.7V8.3z" />
-      <path d="M12 8v4.4" />
-      <circle cx="12" cy="16.2" r="0.9" fill="currentColor" stroke="none" />
+      <path d="M8.6 2.9h6.8L21.1 8.6v6.8L15.4 21.1H8.6L2.9 15.4V8.6z" />
+      <path d="M12 7.4v5" strokeWidth={2.2} />
+      <circle cx="12" cy="16.2" r="1.15" fill="currentColor" stroke="none" />
     </>
   ),
   palette: (
     <>
-      <path d="M12 3.4a8.8 8.8 0 0 0 0 17.4c1.4 0 2-1 1.7-2.1-.3-1.2.6-2.1 1.8-2.1h1.4a4 4 0 0 0 4-4c-.1-4.9-4-9.2-8.9-9.2z" />
-      <circle cx="8.4" cy="11.2" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none" />
-      <circle cx="15.6" cy="11.2" r="1.1" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="8.8" />
+      <circle cx="16" cy="16" r="2.4" />
+      <circle cx="7.2" cy="11.4" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="9.4" cy="7.5" r="1.15" fill="currentColor" stroke="none" />
+      <circle cx="14.3" cy="7.2" r="1.15" fill="currentColor" stroke="none" />
     </>
   ),
   plus: <path d="M12 5.4v13.2M5.4 12h13.2" />,
@@ -176,13 +174,6 @@ const SHAPES: Record<IconName, ReactNode> = {
     <>
       <path d="M20.4 15.4a2 2 0 0 1-2 2H8.6L4 20.8V6.4a2 2 0 0 1 2-2h12.4a2 2 0 0 1 2 2z" />
       <path d="M8.4 8.4h9.2M8.4 12.2h6.2" />
-    </>
-  ),
-  sprout: (
-    <>
-      <path d="M12 20.6v-8.4" />
-      <path d="M12 12.2C12 8.9 9.5 6.6 6.2 6.6c0 3.3 2.5 5.6 5.8 5.6z" />
-      <path d="M12 14.6c0-3 2.3-5.2 5.4-5.2 0 3-2.3 5.2-5.4 5.2z" />
     </>
   ),
   star: <path d="M12 3.8 14.6 9l5.6.8-4.1 4 .9 5.6-5-2.6-5 2.6.9-5.6-4-4L9.4 9z" />,
