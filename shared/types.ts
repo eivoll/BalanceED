@@ -177,6 +177,8 @@ export interface OpportunityView extends Opportunity {
   signups: number;
   /** null when the opportunity has no capacity limit. */
   placesLeft: number | null;
+  /** Enrolled student names, oldest signup first — only a teacher's view fills this in. */
+  signupNames?: string[];
 }
 
 export interface OpportunityWithMatch extends OpportunityView {

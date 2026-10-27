@@ -89,7 +89,7 @@ export const Q = {
     { id: studentId },
   ),
   opportunities: () => gql<{ opportunities: OpportunityDTO[] }>(
-    `{ opportunities { ${OPPORTUNITY_FIELDS} } }`,
+    `{ opportunities { ${OPPORTUNITY_FIELDS} signupNames } }`,
   ),
   matched: (studentId: string) => gql<{ matchedOpportunities: OpportunityDTO[] }>(
     `query ($id: ID!) { matchedOpportunities(studentId: $id) { ${OPPORTUNITY_FIELDS} matchScore matchReasonMongolian } }`,
@@ -178,6 +178,8 @@ export interface OpportunityDTO {
   day: string; timeSlot: string; level: string;
   description: string; location: string; deadline: string; capacity: number;
   enrolled: boolean; signups: number; placesLeft: number | null;
+  /** Only the teacher's own query asks for this, so it is absent everywhere else. */
+  signupNames?: string[] | null;
   matchScore?: string | null; matchReasonMongolian?: string | null;
 }
 export interface StressDriverDTO {

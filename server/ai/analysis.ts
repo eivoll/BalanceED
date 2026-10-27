@@ -508,7 +508,7 @@ function detectConflicts(cal: Calendar, assignments: Assignment[], exams: Exam[]
 }
 
 export function matchOpportunities(student: StudentProfile, free: WeeklyScheduleItem[]): OpportunityWithMatch[] {
-  const interests = student.aboutMe.interests.map(normalize);
+  const interests = student.aboutMe.interests.map((raw) => ({ raw, norm: normalize(raw) }));
   const skills = student.aboutMe.skills.map(normalize);
   const enrolledIds = db.signups.opportunityIdsFor(student.id);
   const signupCounts = db.signups.counts();
@@ -530,13 +530,15 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
     .map((opp) => {
       const req = opp.requiredSkills.map(normalize);
       const skillHits = req.filter((r) => skills.includes(r)).length;
-      const interestHit =
-        interests.some((i) =>
-          [opp.title, opp.organizer, ...opp.requiredSkills].some((t) => normalize(t).includes(i)),
-        ) || interests.some((i) => req.some((r) => r.includes(i)));
+      // Only the interests that actually matched get named, so the reason never claims a false link.
+      const interestHits = interests.filter(
+        ({ norm }) =>
+          [opp.title, opp.organizer, ...opp.requiredSkills].some((t) => normalize(t).includes(norm)) ||
+          req.some((r) => r.includes(norm)),
+      );
       const signups = signupCounts.get(opp.id) ?? 0;
       const placesLeft = opp.capacity > 0 ? Math.max(0, opp.capacity - signups) : null;
-      let score = 25 + (req.length ? (skillHits / req.length) * 50 : 25) + (interestHit ? 25 : 0);
+      let score = 25 + (req.length ? (skillHits / req.length) * 50 : 25) + (interestHits.length ? 25 : 0);
       if (placesLeft === 0) score -= 30;
       else if (placesLeft !== null && placesLeft <= 2) score += 5;
       score = clamp(Math.round(score), 5, 100);
@@ -548,9 +550,10 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
         kinds.push('ур чадвар');
         matched.push(...matchedSkills);
       }
-      if (interestHit) {
+      if (interestHits.length) {
         kinds.push('сонирхол');
-        matched.push(student.aboutMe.interests[0] ?? '—');
+        // The # a tag chip carries has no business inside a sentence.
+        matched.push(...interestHits.map((h) => h.raw.replace(/^#/, '')));
       }
       const placeNote =
         placesLeft === null
@@ -559,7 +562,7 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
             ? ' Сул орон дууссан тул хүлээлийн жагсаалтад бичигдэнэ.'
             : ` Одоо ${placesLeft} сул орон байна.`;
       const reason = matched.length
-        ? `Таны ${kinds.join(' болон ')}той (${matched.join(', ')}) нийцэж, ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтаж байна.${placeNote}`
+        ? `Таны ${kinds.join(' болон ')} (${matched.join(', ')}) таарч, ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтаж байна.${placeNote}`
         : `Шаардагдсан ур чадвартай давхцахгүй ч ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтах тул шинэ ур чадвар эзэмшихэд тохиромжтой.${placeNote}`;
       return {
         ...opp,

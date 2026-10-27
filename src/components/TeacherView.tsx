@@ -163,6 +163,16 @@ export default function TeacherView({
                   {o.location && <> · {o.location}</>}
                   {o.requiredSkills.length && <> · {o.requiredSkills.join(', ')}</>}
                 </span>
+                {!!o.signupNames?.length && (
+                  <span className="mt-1.5 flex flex-wrap items-center gap-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-muted">Бүртгэлтэй:</span>
+                    {o.signupNames.map((n, i) => (
+                      <span key={`${n}-${i}`} className="rounded-full border border-line bg-page/70 px-2 py-0.5 text-[10px] font-semibold">
+                        {n}
+                      </span>
+                    ))}
+                  </span>
+                )}
               </span>
               <span className="ml-auto flex shrink-0 items-center gap-3 text-xs font-medium text-muted">
                 <span className="tabular-nums">{DAY_MN[o.day]} {o.timeSlot}</span>
@@ -234,7 +244,7 @@ function PostWorkForm({ studentId, students, onPosted }: { studentId: string; st
         )}
         <div>
           <span className="label">Хичээл</span>
-          <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Матемик" />
+          <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Математик" />
         </div>
         <DateField label={mode === 'assignment' ? 'Хугацаа' : 'Шалгалтын огноо'} value={date} min={todayIso()} onChange={setDate} />
         {mode === 'exam' && <TimeField label="Цаг" value={time} from={7} to={19} minuteStep={5} onChange={setTime} />}

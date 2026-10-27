@@ -174,15 +174,34 @@ function fullSchedule(studentId: string): WeeklyScheduleItem[] {
 }
 
 /** Adds the enrollment state the requesting student cares about to a plain opportunity row. */
-function asView(opp: Opportunity, viewerId: string | null): OpportunityView {
-  const signups = db.signups.countFor(opp.id);
+/** Signup facts a viewer is entitled to, read once so a list costs three queries, not three per row. */
+interface SignupFacts {
+  viewerId: string | null;
+  counts: Map<string, number>;
+  enrolled: Set<string>;
+  roster: Map<string, string[]> | null;
+}
+
+function signupFacts(user: UserAccount): SignupFacts {
+  const viewerId = viewerStudentId(user);
+  return {
+    viewerId,
+    counts: db.signups.counts(),
+    enrolled: viewerId ? db.signups.opportunityIdsFor(viewerId) : new Set(),
+    roster: user.role === 'teacher' ? db.signups.rosterByOpportunity() : null,
+  };
+}
+
+function asView(opp: Opportunity, facts: SignupFacts): OpportunityView {
+  const signups = facts.counts.get(opp.id) ?? 0;
   return {
     ...opp,
     matchScore: null,
     matchReasonMongolian: null,
-    enrolled: viewerId ? db.signups.opportunityIdsFor(viewerId).has(opp.id) : false,
+    enrolled: facts.enrolled.has(opp.id),
     signups,
     placesLeft: opp.capacity > 0 ? Math.max(0, opp.capacity - signups) : null,
+    ...(facts.roster ? { signupNames: facts.roster.get(opp.id) ?? [] } : {}),
   };
 }
 
@@ -330,8 +349,8 @@ export const resolvers = {
       return db.exams.byStudent(owner.id).sort((a, b) => a.examDate.localeCompare(b.examDate));
     },
     opportunities: (_: unknown, __: unknown, ctx: Ctx): OpportunityView[] => {
-      const viewerId = viewerStudentId(currentUser(ctx));
-      return db.opportunities.all().map((o) => asView(o, viewerId));
+      const facts = signupFacts(currentUser(ctx));
+      return db.opportunities.all().map((o) => asView(o, facts));
     },
     matchedOpportunities: (_: unknown, { studentId }: { studentId: string }, ctx: Ctx) => {
       const student = authorize(ctx, studentId, 'view');
@@ -587,7 +606,7 @@ export const resolvers = {
         },
         'opp',
       );
-      return asView(opp, viewerStudentId(user));
+      return asView(opp, signupFacts(user));
     },
 
     deleteOpportunity: (_: unknown, { id }: { id: string }, ctx: Ctx) => {
@@ -605,13 +624,13 @@ export const resolvers = {
       const opp = db.opportunities.byId(opportunityId);
       if (!opp) throw new UserInputError('Боломж олдсонгүй.');
       if (db.signups.opportunityIdsFor(user.studentId).has(opportunityId)) {
-        throw new UserInputError('Энэ боломд аль хэдийн бүртгэлтэй байна.');
+        throw new UserInputError('Энэ боломжид аль хэдийн бүртгэлтэй байна.');
       }
       if (opp.deadline && new Date(`${opp.deadline}T23:59:59`).getTime() < Date.now()) {
         throw new UserInputError('Бүртгэл хаагдсан — сүүлийн огноо өнгөрсөн байна.');
       }
       db.signups.add(opportunityId, user.studentId);
-      return asView(opp, user.studentId);
+      return asView(opp, signupFacts(user));
     },
 
     unenrollOpportunity: (_: unknown, { opportunityId }: { opportunityId: string }, ctx: Ctx): OpportunityView => {
@@ -622,7 +641,7 @@ export const resolvers = {
       const opp = db.opportunities.byId(opportunityId);
       if (!opp) throw new UserInputError('Боломж олдсонгүй.');
       db.signups.remove(opportunityId, user.studentId);
-      return asView(opp, user.studentId);
+      return asView(opp, signupFacts(user));
     },
   },
 };

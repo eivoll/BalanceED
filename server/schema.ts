@@ -139,6 +139,8 @@ export const typeDefs = /* GraphQL */ `
     signups: Int!
     """null when there is no capacity limit."""
     placesLeft: Int
+    """Names of the students holding a place, oldest signup first; null unless a teacher asks."""
+    signupNames: [String!]
   }
 
   type ScheduleConflict {

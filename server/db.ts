@@ -414,11 +414,15 @@ const stmtSignupAdd = sqlite.prepare(
   'INSERT INTO opportunity_signups (id, opportunity_id, student_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT (opportunity_id, student_id) DO NOTHING',
 );
 const stmtSignupDrop = sqlite.prepare('DELETE FROM opportunity_signups WHERE opportunity_id = ? AND student_id = ?');
-const stmtSignupCount = sqlite.prepare('SELECT COUNT(*) AS n FROM opportunity_signups WHERE opportunity_id = ?');
 const stmtSignupIds = sqlite.prepare('SELECT opportunity_id FROM opportunity_signups WHERE student_id = ?');
 const stmtSignupDropOpp = sqlite.prepare('DELETE FROM opportunity_signups WHERE opportunity_id = ?');
 const stmtSignupDropStudent = sqlite.prepare('DELETE FROM opportunity_signups WHERE student_id = ?');
 const stmtSignupCounts = sqlite.prepare('SELECT opportunity_id, COUNT(*) AS n FROM opportunity_signups GROUP BY opportunity_id');
+const stmtSignupRoster = sqlite.prepare(
+  `SELECT su.opportunity_id AS opportunity_id, s.name AS name
+     FROM opportunity_signups su JOIN students s ON s.id = su.student_id
+    ORDER BY su.created_at`,
+);
 
 const signups = {
   /** False when the student already held a place. */
@@ -429,15 +433,22 @@ const signups = {
   remove(opportunityId: string, studentId: string): boolean {
     return Number(stmtSignupDrop.run(opportunityId, studentId).changes) > 0;
   },
-  countFor(opportunityId: string): number {
-    return Number((stmtSignupCount.get(opportunityId) as Row).n);
-  },
   /** One GROUP BY for a whole list, so the hub never pays a query per card. */
   counts(): Map<string, number> {
     return new Map((stmtSignupCounts.all() as Row[]).map((r) => [text(r.opportunity_id), Number(r.n)]));
   },
   opportunityIdsFor(studentId: string): Set<string> {
     return new Set((stmtSignupIds.all(studentId) as Row[]).map((r) => text(r.opportunity_id)));
+  },
+  /** One join for the whole list: opportunity id -> enrolled student names, oldest signup first. */
+  rosterByOpportunity(): Map<string, string[]> {
+    const out = new Map<string, string[]>();
+    for (const r of stmtSignupRoster.all() as Row[]) {
+      const list = out.get(text(r.opportunity_id));
+      if (list) list.push(text(r.name));
+      else out.set(text(r.opportunity_id), [text(r.name)]);
+    }
+    return out;
   },
   dropForOpportunity(opportunityId: string): number {
     return Number(stmtSignupDropOpp.run(opportunityId).changes);
