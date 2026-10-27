@@ -366,7 +366,7 @@ export function measure(
   axes.push({
     level: clamp(lateFinishes / 3, 0, 1),
     weight: 12,
-    label: 'Орой хүртэлх ачаалал',
+    label: 'Оройн цагийн ачаалал',
     detail: `${lateFinishes} өдөрт 19:30-аас хойш ажил дуусч, унтахад үлдэх цаг хумигдаж байна.`,
   });
 
@@ -403,7 +403,7 @@ export function measure(
         const away = Math.max(0, daysUntil(e.examDate));
         return `${e.subject} — ${mnDate(e.examDate)} (${away === 0 ? 'өнөөдөр' : `${away} хоногийн дараа`})`;
       })
-      .join('; ') || 'ойрын 14 хоногт шалгалт товлогдоогүй'}${crowdedExams ? '; шалгалтууд хоног сөхөж товлогдсон тул нэгт нь бэлдэх завсар байхгүй' : ''}.`,
+      .join('; ') || 'ойрын 14 хоногт шалгалт товлогдоогүй'}${crowdedExams ? '; шалгалтууд 2 хоногийн дотор дараалан товлогдсон тул нэгт нь бэлдэх завсар байхгүй' : ''}.`,
   });
 
   const toneOf = (level: number): StressDriver['tone'] => (level >= 0.75 ? 'danger' : level >= 0.4 ? 'warn' : 'ok');

@@ -110,7 +110,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
         <Field label="Нэр" htmlFor="su-name">
           <input id="su-name" className="field" value={name} onChange={(e) => setName(e.target.value)} placeholder="Оргилмаа Бат" autoComplete="name" />
         </Field>
-        <Field label="Анги" htmlFor="su-grade" hint="Жишээ: 11-Б · ангиа хамт бичнэ үү.">
+        <Field label="Анги" htmlFor="su-grade" hint="Жишээ: 11-Б">
           <input id="su-grade" className="field" value={grade} onChange={(e) => setGrade(e.target.value)} placeholder="11-Б" />
         </Field>
         <Field label="Сургууль" htmlFor="su-school">

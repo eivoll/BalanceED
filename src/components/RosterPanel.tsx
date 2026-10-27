@@ -116,7 +116,7 @@ export default function RosterPanel({
               <SchoolHoursFields
                 value={rows}
                 onChange={setRows}
-                hint="Энэ цаг чөлөөт цагт тооцогдохгүй — сурагчийн хуваарь дүүрэн эсэхийг үүгээр шалгана."
+                hint="Сургуулийн цагийг чөлөөт цагт тооцохгүй — ачааллын индекс үүн дээр үндэслэнэ."
               />
             </div>
 
