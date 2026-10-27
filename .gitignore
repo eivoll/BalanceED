@@ -4,5 +4,6 @@ dist-server/
 data/
 .env
 *.log
+_evidence/
 .DS_Store
 .localized

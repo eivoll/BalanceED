@@ -136,7 +136,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
 
       <SectionTitle icon="bulb">Сонирхол, ур чадвар, зорилго</SectionTitle>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Field label="Сонирхол" htmlFor="su-int" hint="Таслалар тусгайлна.">
+        <Field label="Сонирхол" htmlFor="su-int" hint="Таслалаар тусгайлна уу.">
           <input id="su-int" className="field" value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="зураг зурах, хөгжим" />
         </Field>
         <Field label="Ур чадвар" htmlFor="su-skill">
