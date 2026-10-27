@@ -524,9 +524,12 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
 
   return db.opportunities
     .all()
-    // A deadline that already passed is not a match, however good it looks.
-    .filter((opp) => !opp.deadline || daysUntil(opp.deadline) >= 0)
-    .filter(fitsFreeSlot)
+    .filter((opp) => {
+      // A place already held must stay listed — the student still has to see and cancel it.
+      if (enrolledIds.has(opp.id)) return true;
+      // A deadline that already passed is not a match, however good it looks.
+      return (!opp.deadline || daysUntil(opp.deadline) >= 0) && fitsFreeSlot(opp);
+    })
     .map((opp) => {
       const req = opp.requiredSkills.map(normalize);
       const skillHits = req.filter((r) => skills.includes(r)).length;
@@ -561,9 +564,17 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
           : placesLeft === 0
             ? ' Сул орон дууссан тул хүлээлгийн жагсаалтад бичигдэнэ.'
             : ` Одоо ${placesLeft} сул орон байна.`;
-      const reason = matched.length
-        ? `Таны ${kinds.join(' болон ')} (${matched.join(', ')}) таарч, ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтаж байна.${placeNote}`
-        : `Шаардагдсан ур чадвартай давхцахгүй ч ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтах тул шинэ ур чадвар эзэмшихэд тохиромжтой.${placeNote}`;
+      const fits = fitsFreeSlot(opp);
+      // A non-breaking hyphen keeps a time range from splitting across two lines mid-sentence.
+      const daySlot = `${DAY_MN[opp.day]} гарагийн ${opp.timeSlot.replace('-', '\u2011')}`;
+      const note = matched.length
+        ? fits
+          ? `Таны ${kinds.join(' болон ')} (${matched.join(', ')}) таарч, ${daySlot} чөлөөт цагт багтаж байна.`
+          : `Таны ${kinds.join(' болон ')} (${matched.join(', ')}) таарч байна, гэхдээ ${daySlot} цаг одоогийн хуваарьт чөлөөт биш.`
+        : fits
+          ? `Шаардагдсан ур чадвартай давхцахгүй ч ${daySlot} чөлөөт цагт багтах тул шинэ ур чадвар эзэмшихэд тохиромжтой.`
+          : `Шаардагдсан ур чадвартай давхцахгүй, мөн ${daySlot} цаг одоогийн хуваарьт чөлөөт биш.`;
+      const reason = `${note}${placeNote}`;
       return {
         ...opp,
         matchScore: `${score}%`,
