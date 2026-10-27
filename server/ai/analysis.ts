@@ -22,6 +22,8 @@ const NIGHT_START = 21;
 const DAILY_CAPACITY_CAP = 4;
 /** School is fixed load nobody can resign from, so it weighs less than clubs and jobs. */
 const SCHOOL_WEIGHT = 0.25;
+/** School is fixed load nobody can resign from, so it counts a little discounted toward stress too. */
+const STRESS_SCHOOL_WEIGHT = 0.85;
 
 const normalize = (s: string) => s.replace(/^#/, '').toLowerCase();
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -211,8 +213,9 @@ function weeklyDemand(assignments: Assignment[], exams: Exam[]): number {
   return round1(hours);
 }
 
+/** Bands chosen so a genuinely worrying week is not reported as calm. */
 const riskFromScore = (score: number): 'Low' | 'Medium' | 'High' =>
-  score < 35 ? 'Low' : score < 65 ? 'Medium' : 'High';
+  score < 25 ? 'Low' : score < 55 ? 'Medium' : 'High';
 
 function statusFromScore(score: number): string {
   if (score <= 3.5) return 'Balanced';
@@ -326,7 +329,7 @@ export function measure(
    * Six axes whose weights sum to 100, so the score is the stress and the
    * drivers are its actual parts — nothing is capped out at a fifth of the range.
    */
-  const committedWeek = round1(activityHours + schoolHours * 0.85);
+  const committedWeek = round1(activityHours + schoolHours * STRESS_SCHOOL_WEIGHT);
   const squeezedDays = DAYS.filter((day) => {
     const atSchool = cal.school.get(day);
     if (!atSchool) return false;
@@ -350,13 +353,13 @@ export function measure(
     level: clamp((committedWeek - 20) / 35, 0, 1),
     weight: 20,
     label: 'Долоо хоногийн нийт ачаалал',
-    detail: `Сургууль болон хичээлээс гадуурх ажил нийлээд ${committedWeek} цаг. Өдөр бүр хичээллэх цаг ихсэх тусам ядаргаа нэмэгдэнэ.`,
+    detail: `Сургуульд ${schoolHours}, хичээлээс гадуурх ажилд ${activityHours} цаг. Сургуулийн цагийг 85 хувиар тооцоод ачааллыг ${committedWeek} цаг гэж үзэв.`,
   });
 
   axes.push({
     level: clamp((lightest.committed - 1.5) / 5, 0, 1) * 0.6 + clamp(weekendLoad / 8, 0, 1) * 0.4,
     weight: 14,
-    label: 'Сэргээх цаг байхгүй',
+    label: 'Сэргээх цаг',
     detail: `Хамгийн хөнгөн ${DAY_MN[lightest.day]} гарагт ${lightest.committed} цаг, амралтын өдрүүдэд нийт ${weekendLoad} цаг ажил төлөвлөгдсөн.`,
   });
 
@@ -364,13 +367,13 @@ export function measure(
     level: clamp(lateFinishes / 3, 0, 1),
     weight: 12,
     label: 'Орой хүртэлх ачаалал',
-    detail: `${lateFinishes} өдөр 19:30-аас хойш ажил дуусч, унтахад үлдэх цаг хумигдаж байна.`,
+    detail: `${lateFinishes} өдөрт 19:30-аас хойш ажил дуусч, унтахад үлдэх цаг хумигдаж байна.`,
   });
 
   axes.push({
     level: clamp(squeezedDays.length / 3, 0, 1),
     weight: 10,
-    label: 'Хичээлийн дараа завсаргүй',
+    label: 'Хичээлийн дараах завсар',
     detail: squeezedDays.length
       ? `${squeezedDays.map((d) => DAY_MN[d]).join(', ')} гарагт сургууль дуусаад завсарлага авах завсаргүйгээр дараагийн ажил эхэлж байна.`
       : 'Сургуулийн дараа ажил руу шилжих завсартай.',
@@ -383,9 +386,9 @@ export function measure(
     backlogParts.push(`бие даах ажил ${demandHours} цаг шаардагдахад тохиромжтой чөлөөт цаг ${capacityHours} цаг үлдэв`);
   axes.push({
     level:
-      clamp(overdue / 3, 0, 1) * 0.45 +
-      clamp(pendingSoon / 4, 0, 1) * 0.3 +
-      (demandHours > 0 ? clamp(ratio / 1.2, 0, 1) * 0.25 : 0),
+      clamp(overdue / 2, 0, 1) * 0.6 +
+      clamp(pendingSoon / 3, 0, 1) * 0.25 +
+      (demandHours > 0 ? clamp(ratio / 1.2, 0, 1) * 0.15 : 0),
     weight: 20,
     label: 'Даалгаврын хуримтлал',
     detail: backlogParts.length ? `${backlogParts.join('; ')}.` : 'Дуусаагүй даалгавар хуримтлагдаагүй байна.',

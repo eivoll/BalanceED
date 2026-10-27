@@ -186,6 +186,14 @@ export function GaugeDial({ score }: { score: number }) {
 }
 
 /** Stress is a 0-100 reading, so it gets a bar rather than a dial copied from load. */
+/** Mirrors riskFromScore on the server: 0–24 бага, 25–54 дунд, 55+ өндөр. */
+const RISK_BANDS = [25, 55];
+const RISK_ZONES = [
+  { label: 'Бага', width: 25, align: 'text-left' },
+  { label: 'Дунд', width: 30, align: 'text-center' },
+  { label: 'Өндөр', width: 45, align: 'text-right' },
+];
+
 export function StressMeter({ score, risk, width = 180 }: { score: number; risk: string; width?: number }) {
   const level = riskLevel(risk);
   const fill = level === 'ok' ? 'rgb(var(--c-ok))' : level === 'warn' ? 'rgb(var(--c-warn))' : 'rgb(var(--c-danger))';
@@ -198,16 +206,21 @@ export function StressMeter({ score, risk, width = 180 }: { score: number; risk:
           <span className="text-[11px] font-bold text-muted">/100</span>
         </span>
       </div>
-      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-line/70">
+      <div className="relative mt-1.5 h-2.5 overflow-hidden rounded-full bg-line/70">
         <div
           className="h-full rounded-full transition-all duration-700 ease-out"
           style={{ width: `${Math.min(100, Math.max(0, score))}%`, background: fill }}
         />
+        {RISK_BANDS.map((edge) => (
+          <span key={edge} className="absolute top-0 h-full w-px bg-ink/25" style={{ left: `${edge}%` }} />
+        ))}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] font-semibold text-muted">
-        <span>Бага</span>
-        <span>Дунд</span>
-        <span>Өндөр</span>
+      <div className="mt-1 flex text-[10px] font-semibold text-muted">
+        {RISK_ZONES.map((z) => (
+          <span key={z.label} className={z.align} style={{ width: `${z.width}%` }}>
+            {z.label}
+          </span>
+        ))}
       </div>
     </div>
   );
