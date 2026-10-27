@@ -89,9 +89,9 @@ export default function StudentView({
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3.5">
               <Donut pct={pct} size={84} />
-              <div className="text-xs font-semibold text-muted">
+              <div className="whitespace-nowrap text-xs font-semibold leading-tight text-muted">
                 <p className="text-ink">{assignments.filter((a) => a.isCompleted).length}/{assignments.length} даалгавар</p>
                 <p>гүйцэтгэсэн</p>
               </div>

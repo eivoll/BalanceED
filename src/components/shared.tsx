@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Icon, type IconName } from './icons';
 
 export const DAY_MN: Record<string, string> = {
@@ -110,13 +110,69 @@ export function Card({
   );
 }
 
+const SPARK_TONE = ['rgb(var(--c-ok))', 'rgb(var(--c-accent2))', 'rgb(var(--c-accent))'];
+/** Uneven angles and offsets read as a burst rather than a clockwork ring. */
+const SPARKS = Array.from({ length: 11 }, (_, i) => ({
+  a: (i * 32.7 + 8) * (Math.PI / 180),
+  fill: SPARK_TONE[i % SPARK_TONE.length],
+  late: (i % 5) * 0.045,
+}));
+
+/**
+ * Eases a number toward its target so a rising percentage is followed, not snapped to.
+ * Mounted values are painted as-is — only a change after mount animates.
+ */
+export function useCountUp(target: number, ms = 800) {
+  const [shown, setShown] = useState(target);
+  const live = useRef({ value: target, raf: 0 });
+
+  useEffect(() => {
+    const s = live.current;
+    if (s.value === target) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      s.value = target;
+      setShown(target);
+      return;
+    }
+    const from = s.value;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const p = Math.min(1, (now - start) / ms);
+      s.value = Math.round(from + (target - from) * (1 - (1 - p) ** 3));
+      setShown(s.value);
+      if (p < 1) s.raf = requestAnimationFrame(tick);
+    };
+    s.raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(s.raf);
+  }, [target, ms]);
+
+  return shown;
+}
+
 /** Circular completion gauge with animated arc. */
-export function Donut({ pct, size = 120, label }: { pct: number; size?: number; label?: string }) {
+export function Donut({
+  pct,
+  size = 120,
+  label,
+  celebrate = false,
+}: {
+  pct: number;
+  size?: number;
+  label?: string;
+  celebrate?: boolean;
+}) {
+  const shown = useCountUp(pct);
   const r = (size - 14) / 2;
   const c = 2 * Math.PI * r;
-  const off = c - (Math.min(100, Math.max(0, pct)) / 100) * c;
+  const off = c - (Math.min(100, Math.max(0, shown)) / 100) * c;
+  // 12px is the ring's own thickness plus breathing room, so the figure can never
+  // touch the arc — text-2xl "100%" is wider than the hole of a small gauge.
+  const inner = Math.round(size * 0.22);
   return (
-    <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>
+    <div
+      className={`relative inline-flex shrink-0 items-center justify-center ${celebrate ? 'donut-flash' : ''}`}
+      style={{ width: size, height: size }}
+    >
       <svg width={size} height={size} className="-rotate-90">
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" strokeWidth={10} className="stroke-line/70" />
         <circle
@@ -129,7 +185,6 @@ export function Donut({ pct, size = 120, label }: { pct: number; size?: number; 
           stroke="url(#donutGrad)"
           strokeDasharray={c}
           strokeDashoffset={off}
-          className="donut-arc"
         />
         <defs>
           <linearGradient id="donutGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -138,10 +193,30 @@ export function Donut({ pct, size = 120, label }: { pct: number; size?: number; 
           </linearGradient>
         </defs>
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-2xl font-extrabold tabular-nums tracking-tight">{pct}%</span>
-        {label && <span className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</span>}
+      <div className="absolute inset-3 flex flex-col items-center justify-center leading-none">
+        <span className={`font-extrabold tabular-nums tracking-tight whitespace-nowrap ${celebrate ? 'donut-num-pop' : ''}`} style={{ fontSize: inner }}>
+          {shown}%
+        </span>
+        {label && <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</span>}
       </div>
+      {celebrate && (
+        <span className="pointer-events-none absolute inset-0" aria-hidden>
+          {SPARKS.map((s, i) => (
+            <span
+              key={i}
+              className="donut-spark"
+              style={
+                {
+                  '--sx': `${Math.cos(s.a) * size * 0.62}px`,
+                  '--sy': `${Math.sin(s.a) * size * 0.62}px`,
+                  background: s.fill,
+                  animationDelay: `${0.62 + s.late}s`,
+                } as CSSProperties
+              }
+            />
+          ))}
+        </span>
+      )}
     </div>
   );
 }

@@ -1,26 +1,7 @@
+import { useEffect, useRef, useState } from 'react';
 import { attempt, M, type AssignmentDTO, type ExamDTO } from '../api';
-import { Card, Donut, StatusIcon, fmtDate, useToast } from './shared';
+import { Card, Donut, fmtDate, useCountUp, useToast } from './shared';
 import { Icon } from './icons';
-
-const CONFETTI_COLORS = ['rgb(var(--c-accent))', 'rgb(var(--c-accent2))', 'rgb(var(--c-ok))'];
-
-function Confetti() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-      {Array.from({ length: 16 }).map((_, i) => (
-        <span
-          key={i}
-          className="confetti-bit"
-          style={{
-            left: `${6 + i * 6}%`,
-            background: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-            animationDelay: `${(i % 8) * 0.12}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function AssignmentsPanel({
   assignments,
@@ -35,8 +16,22 @@ export default function AssignmentsPanel({
 }) {
   const done = assignments.filter((a) => a.isCompleted).length;
   const pct = assignments.length ? Math.round((done / assignments.length) * 100) : 0;
+  const shown = useCountUp(pct);
   const today = new Date().toISOString().slice(0, 10);
   const { toastError, node } = useToast();
+
+  // Celebrate the crossing, not the state: reloading or changing tabs at 100%
+  // must not replay the burst.
+  const [celebrate, setCelebrate] = useState(false);
+  const lastPct = useRef(pct);
+  useEffect(() => {
+    const rose = lastPct.current < 100 && pct === 100;
+    lastPct.current = pct;
+    if (!rose) return;
+    setCelebrate(true);
+    const timer = setTimeout(() => setCelebrate(false), 1800);
+    return () => clearTimeout(timer);
+  }, [pct]);
 
   async function toggle(a: AssignmentDTO) {
     const problem = await attempt(() => M.toggleAssignment(a.id, !a.isCompleted));
@@ -47,22 +42,21 @@ export default function AssignmentsPanel({
   return (
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-5">
       <Card className="relative overflow-hidden lg:col-span-2" title="Хичээлийн дэвшил" subtitle="Гүйцэтгэсэн даалгавраас автоматаар тооцоолно">
-        {pct === 100 && assignments.length > 0 && <Confetti />}
         <div className="flex items-center gap-5">
-          <Donut pct={pct} label="Гүйцэтгэл" />
+          <Donut pct={pct} label="Гүйцэтгэл" celebrate={celebrate} />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold">
               {done}<span className="text-muted">/{assignments.length} даалгавар</span>
             </p>
             <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-line/70">
-              <div
-                className="h-full rounded-full bg-ok transition-all duration-500 ease-out"
-                style={{ width: `${pct}%` }}
-              />
+              <div className="h-full rounded-full bg-ok transition-colors duration-500" style={{ width: `${shown}%` }} />
             </div>
             {pct === 100 && assignments.length > 0 ? (
-              <p className="animate-pop mt-3 inline-flex items-center gap-1.5 rounded-full border border-ok/40 bg-ok/10 px-3 py-1 text-xs font-bold text-ok">
-                <Icon name="sparkles" size={15} /> Гайхалтай! Бүгд дууссан — чөлөөт цагаа сайн өнгөрөөрэй!
+              <p
+                className="animate-pop mt-3 inline-flex items-center gap-1.5 rounded-full border border-ok/40 bg-ok/10 px-3 py-1 text-xs font-bold text-ok"
+                style={celebrate ? { animationDelay: '0.9s' } : undefined}
+              >
+                <Icon name="sparkles" size={15} /> Бүгд дууссан — амрах цаг!
               </p>
             ) : (
               <p className="mt-3 text-xs leading-relaxed text-muted">
@@ -95,7 +89,9 @@ export default function AssignmentsPanel({
                       <path d="M1 5.2 4.2 8.4 11 1.6" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="check-mark" />
                     </svg>
                   </span>
-                  <StatusIcon level={a.isCompleted ? 'ok' : overdue ? 'danger' : 'warn'} />
+                  {/* The ticked box plus struck text already say "done", and an overdue
+                      row carries its own triangle by the date — a leading status icon
+                      here only ever duplicates one of the two. */}
                   <span className={`min-w-0 flex-1 truncate text-sm font-semibold transition-all duration-300 ${a.isCompleted ? 'done-slide translate-x-1' : ''}`}>
                     {a.title}
                   </span>
@@ -103,7 +99,7 @@ export default function AssignmentsPanel({
                     {a.subject}
                   </span>
                   <span className={`text-xs font-semibold tabular-nums ${overdue ? 'text-danger' : 'text-muted'}`}>
-                    {overdue && <Icon name="alert" size={13} className="mr-1 inline text-danger" />}{fmtDate(a.dueDate)}
+                    {overdue && <Icon name="alert" size={13} className="mr-1 inline text-danger" title="Хугацаа хэтэрсэн" />}{fmtDate(a.dueDate)}
                   </span>
                 </label>
               </li>

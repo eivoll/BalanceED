@@ -115,18 +115,38 @@ html.dark {
 }
 .animate-rise { animation: rise 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
-@keyframes confetti-fall {
-  0% { transform: translateY(-10px) rotate(0deg); opacity: 1; }
-  100% { transform: translateY(120px) rotate(540deg); opacity: 0; }
+@keyframes spark-out {
+  0% { transform: translate(0, 0) scale(0.35); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(1); opacity: 0; }
 }
-.confetti-bit {
+.donut-spark {
   position: absolute;
-  top: 0;
-  width: 8px;
-  height: 12px;
-  border-radius: 2px;
-  animation: confetti-fall 1.6s ease-in forwards;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  border-radius: 9999px;
+  opacity: 0;
+  animation: spark-out 1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* The ring pulses once, after the arc has finished travelling. */
+@keyframes donut-flash {
+  0% { box-shadow: 0 0 0 0 rgb(var(--c-ok) / 0.45); }
+  100% { box-shadow: 0 0 0 16px rgb(var(--c-ok) / 0); }
+}
+.donut-flash {
+  border-radius: 9999px;
+  animation: donut-flash 0.8s ease-out 0.66s both;
+}
+@keyframes donut-num {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+.donut-num-pop { animation: donut-num 0.5s ease-out 0.8s both; }
 
 @keyframes pop-in {
   0% { transform: scale(0.6); opacity: 0; }
@@ -152,8 +172,9 @@ html.dark {
   @apply text-muted line-through decoration-2 transition-all duration-300;
 }
 
-/* Gauge + donut transitions */
-.gauge-arc, .donut-arc {
+/* Gauge transition — the donut is driven frame by frame instead, so the number
+   and its arc always agree. */
+.gauge-arc {
   transition: stroke-dashoffset 0.6s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
