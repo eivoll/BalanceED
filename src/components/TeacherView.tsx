@@ -4,16 +4,17 @@ import { attempt, M, Q, type AnalysisDTO, type ClassRowDTO, type OpportunityDTO,
 import RosterPanel from './RosterPanel';
 import { Icon } from './icons';
 import ScheduleGrid from './ScheduleGrid';
-import { Card, CoachCard, DAY_MN, LEVEL_MN, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, scoreLevel, useToast } from './shared';
+import { DateField, TimeField, TimeRangeFields } from './DateTimeField';
+import { Card, CoachCard, DAY_MN, LEVEL_MN, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, riskLevel, scoreLevel, todayIso, useToast } from './shared';
 
 const LEVELS = ['School', 'National', 'Global'];
 
-function ScoreBar({ score }: { score: number }) {
+function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
   const level = scoreLevel(score);
   const color = level === 'ok' ? 'bg-ok' : level === 'warn' ? 'bg-warn' : 'bg-danger';
   return (
     <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-line/70" aria-hidden>
-      <span className={`block h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${Math.min(100, score * 10)}%` }} />
+      <span className={`block h-full rounded-full ${color} transition-all duration-500`} style={{ width: `${Math.min(100, (score / max) * 100)}%` }} />
     </span>
   );
 }
@@ -32,6 +33,14 @@ export default function TeacherView({
   const [analysis, setAnalysis] = useState<AnalysisDTO | null>(null);
   const [schedule, setSchedule] = useState<ScheduleItemDTO[]>([]);
   const [opps, setOpps] = useState<OpportunityDTO[]>([]);
+  const { toast, toastError, node: toastNode } = useToast();
+
+  async function removeOpp(id: string) {
+    const problem = await attempt(() => M.deleteOpportunity(id));
+    if (problem) return toastError(problem);
+    toast('Боломж устгагдлаа');
+    reload();
+  }
 
   const reload = useCallback(() => {
     Q.classWorkload().then((d) => setRows(d.classWorkload)).catch(() => setRows([]));
@@ -65,7 +74,7 @@ export default function TeacherView({
         <>
           <Card
             title="Ачааллын индекс — анги"
-            subtitle="AI-ийн ачааллын оноо (1–10) · мөр дээр дарж сурагч сонгоно"
+            subtitle="Ачаалал (1–10) ба стресс (0–100) · мөр дээр дарж сурагч сонгоно"
           >
             <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
               {rows.map((r, i) => (
@@ -88,8 +97,14 @@ export default function TeacherView({
                       <span className="shrink-0 text-sm font-extrabold tabular-nums">{r.workloadScore.toFixed(1)}<span className="text-[11px] font-medium text-muted">/10</span></span>
                     </span>
                     <ScoreBar score={r.workloadScore} />
+                    <span className="mt-2.5 flex items-baseline justify-between gap-3">
+                      <span className="text-[11px] font-bold uppercase tracking-wide text-muted">Стресс</span>
+                      <span className="shrink-0 text-xs font-extrabold tabular-nums">{r.stressScore}<span className="text-[11px] font-medium text-muted">/100</span></span>
+                    </span>
+                    <ScoreBar score={r.stressScore} max={100} />
                     <span className="mt-1.5 block truncate text-[11px] font-medium text-muted">
-                      {r.grade} · {STATUS_MN[r.status] ?? r.status} · {RISK_MN[r.stressRisk] ?? r.stressRisk} эрсдэл
+                      {r.grade} · {STATUS_MN[r.status] ?? r.status} · <StatusIcon level={riskLevel(r.stressRisk)} /> {RISK_MN[r.stressRisk] ?? r.stressRisk} эрсдэл
+                      {r.topDriver && <> · голлох шалтгаан: {r.topDriver}</>}
                     </span>
                   </span>
                 </button>
@@ -131,18 +146,45 @@ export default function TeacherView({
         </>
       )}
 
-      <Card title="Боломжуудын жагсаалт" subtitle="Нийтлэгдсэн боломжууд">
+      <Card title="Боломжуудын жагсаалт" subtitle="Нийтлэгдсэн боломж, сурагчдын бүртгэл">
+        {!opps.length && (
+          <p className="rounded-xl border border-line bg-page/60 p-4 text-sm text-muted">
+            Одоогоор нийтлэгдсэн боломж байхгүй — баруун талын хэлбэрээр эхний боломжоо нэмнэ үү.
+          </p>
+        )}
         <ul className="grid grid-cols-1 gap-2">
           {opps.map((o) => (
             <li key={o.id} className="card flex flex-wrap items-center gap-3 px-4 py-3">
               <Pill tone={o.level === 'Global' ? 'good' : o.level === 'National' ? 'info' : 'neutral'}>{LEVEL_MN[o.level] ?? o.level}</Pill>
-              <strong className="text-sm">{o.title}</strong>
-              <span className="ml-auto text-xs font-medium text-muted">
-                {o.organizer} · {DAY_MN[o.day]} {o.timeSlot} · {o.requiredSkills.join(', ')}
+              <span className="min-w-0">
+                <strong className="block truncate text-sm">{o.title}</strong>
+                <span className="block truncate text-[11px] font-medium text-muted">
+                  {o.organizer}
+                  {o.location && <> · {o.location}</>}
+                  {o.requiredSkills.length && <> · {o.requiredSkills.join(', ')}</>}
+                </span>
+              </span>
+              <span className="ml-auto flex shrink-0 items-center gap-3 text-xs font-medium text-muted">
+                <span className="tabular-nums">{DAY_MN[o.day]} {o.timeSlot}</span>
+                <span className="tabular-nums">
+                  <Icon name="user" size={13} /> {o.signups}
+                  {o.placesLeft !== null && <> / {o.capacity}</>}
+                </span>
+                {o.deadline && <span className="tabular-nums">Хугацаа: {fmtDate(o.deadline)}</span>}
+                <button
+                  type="button"
+                  className="icon-toggle border border-line"
+                  title="Боломжийг устгах"
+                  aria-label={`${o.title} устгах`}
+                  onClick={() => removeOpp(o.id)}
+                >
+                  <Icon name="trash" size={14} />
+                </button>
               </span>
             </li>
           ))}
         </ul>
+        {toastNode}
       </Card>
     </div>
   );
@@ -187,23 +229,15 @@ function PostWorkForm({ studentId, students, onPosted }: { studentId: string; st
         {mode === 'assignment' && (
           <div>
             <span className="label">Гарчиг</span>
-            <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Calculus problem set 8" />
+            <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Математикийн бодлого 8" />
           </div>
         )}
         <div>
           <span className="label">Хичээл</span>
-          <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Math" />
+          <input className="field" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Матемик" />
         </div>
-        <div>
-          <span className="label">{mode === 'assignment' ? 'Хугацаа' : 'Шалгалтын огноо'}</span>
-          <input type="date" className="field" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        {mode === 'exam' && (
-          <div>
-            <span className="label">Цаг</span>
-            <input type="time" className="field" value={time} onChange={(e) => setTime(e.target.value)} />
-          </div>
-        )}
+        <DateField label={mode === 'assignment' ? 'Хугацаа' : 'Шалгалтын огноо'} value={date} min={todayIso()} onChange={setDate} />
+        {mode === 'exam' && <TimeField label="Цаг" value={time} from={7} to={19} minuteStep={5} onChange={setTime} />}
       </div>
       <div className="mt-4">
         <button className="btn-grad" onClick={post}><Icon name="send" size={15} /> Сурагчийн хуваарьт нийтлэх</button>
@@ -221,10 +255,15 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
   const [start, setStart] = useState('10:00');
   const [end, setEnd] = useState('12:00');
   const [level, setLevel] = useState('School');
+  const [description, setDescription] = useState('');
+  const [location, setLocation] = useState('');
+  const [deadline, setDeadline] = useState('');
+  const [capacity, setCapacity] = useState('');
   const { toast, toastError, node } = useToast();
 
   async function post() {
     if (!title.trim() || !organizer.trim()) return toastError('Гарчиг, зохион байгуулагчийг бөглөнө үү.');
+    if (start >= end) return toastError('Эхлэх цаг дуусах цагаас өмнө байх ёстой.');
     const problem = await attempt(() =>
       M.createOpportunity({
         title: title.trim(),
@@ -233,10 +272,14 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
         day,
         timeSlot: `${start}-${end}`,
         level,
+        description: description.trim(),
+        location: location.trim(),
+        deadline: deadline.trim(),
+        capacity: capacity.trim() ? Math.max(0, Math.round(Number(capacity))) : 0,
       }),
     );
     if (problem) return toastError(problem);
-    setTitle(''); setOrganizer(''); setSkills('');
+    setTitle(''); setOrganizer(''); setSkills(''); setDescription(''); setLocation(''); setDeadline(''); setCapacity('');
     toast('Боломж нийтлэгдлээ');
     onPosted();
   }
@@ -246,15 +289,35 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <span className="label">Гарчиг</span>
-          <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Summer coding camp mentor" />
+          <input className="field" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Зуны кодичлолын сургалт — удирдагч" />
         </div>
         <div>
           <span className="label">Зохион байгуулагч</span>
-          <input className="field" value={organizer} onChange={(e) => setOrganizer(e.target.value)} placeholder="NGO / Club / School" />
+          <input className="field" value={organizer} onChange={(e) => setOrganizer(e.target.value)} placeholder="Төсөл, клуб, сургууль" />
+        </div>
+        <div className="sm:col-span-2">
+          <span className="label">Товч танилцуулга</span>
+          <textarea
+            className="field min-h-[4.5rem] resize-y"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Хэн оролцох боломжтой, юу хийх вэ."
+            maxLength={600}
+          />
         </div>
         <div className="sm:col-span-2">
           <span className="label">Шаардлагатай ур чадвар</span>
-          <input className="field" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Python, Public Speaking" />
+          <input className="field" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="Питон, илтгэл тавих" />
+        </div>
+        <div>
+          <span className="label">Газар</span>
+          <input className="field" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Сургуулийн 203 тоот" />
+        </div>
+        <div>
+          <span className="label">Хамрах хүрээ</span>
+          <select className="field" value={level} onChange={(e) => setLevel(e.target.value)}>
+            {LEVELS.map((l) => <option key={l} value={l}>{LEVEL_MN[l] ?? l}</option>)}
+          </select>
         </div>
         <div>
           <span className="label">Өдөр</span>
@@ -262,21 +325,21 @@ function PostOpportunityForm({ onPosted }: { onPosted: () => void }) {
             {DAYS.map((d) => <option key={d} value={d}>{DAY_MN[d]}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <span className="label">Эхлэх</span>
-            <input type="time" className="field" value={start} onChange={(e) => setStart(e.target.value)} />
-          </div>
-          <div>
-            <span className="label">Дуусах</span>
-            <input type="time" className="field" value={end} onChange={(e) => setEnd(e.target.value)} />
-          </div>
+        <TimeRangeFields start={start} end={end} onChange={(next) => { setStart(next.start); setEnd(next.end); }} />
+        <div>
+          <DateField label="Бүртгэлийн сүүлийн огноо" value={deadline} min={todayIso()} onChange={setDeadline} />
         </div>
         <div>
-          <span className="label">Хамрах хүрээ</span>
-          <select className="field" value={level} onChange={(e) => setLevel(e.target.value)}>
-            {LEVELS.map((l) => <option key={l} value={l}>{LEVEL_MN[l] ?? l}</option>)}
-          </select>
+          <span className="label">Сул орон</span>
+          <input
+            className="field"
+            type="number"
+            min={0}
+            max={999}
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            placeholder="0 = хязгааргүй"
+          />
         </div>
       </div>
       <div className="mt-4">

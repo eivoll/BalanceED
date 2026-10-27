@@ -148,6 +148,7 @@ export const M = {
     }`, { id: studentId, s: subject, d: examDate, t: time }),
   createOpportunity: (args: OpportunityInput) =>
     gql(`mutation ($i: OpportunityInput!) { createOpportunity(input: $i) { id } }`, { i: args }),
+  deleteOpportunity: (id: string) => gql(`mutation ($id: ID!) { deleteOpportunity(id: $id) }`, { id }),
   createStudent: (args: StudentInput) =>
     gql(`mutation ($i: StudentInput!) { createStudent(input: $i) { id } }`, { i: args }),
   removeStudent: (id: string) => gql(`mutation ($id: ID!) { removeStudent(id: $id) }`, { id }),

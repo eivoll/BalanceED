@@ -6,6 +6,7 @@ export type IconName =
   | 'arrowRight'
   | 'bell'
   | 'book'
+  | 'bulb'
   | 'calendar'
   | 'check'
   | 'chevronDown'
@@ -14,17 +15,17 @@ export type IconName =
   | 'close'
   | 'code'
   | 'cpu'
-  | 'dot'
   | 'heart'
   | 'logout'
   | 'mic'
   | 'moon'
   | 'music'
+  | 'octagon'
   | 'palette'
-  | 'pin'
   | 'plus'
   | 'refresh'
   | 'save'
+  | 'school'
   | 'send'
   | 'sparkles'
   | 'speech'
@@ -32,6 +33,7 @@ export type IconName =
   | 'star'
   | 'sun'
   | 'target'
+  | 'trash'
   | 'user';
 
 const SHAPES: Record<IconName, ReactNode> = {
@@ -59,6 +61,12 @@ const SHAPES: Record<IconName, ReactNode> = {
     <>
       <path d="M12 6.6V20" />
       <path d="M12 6.6C10.3 5.1 8.1 4.4 4 4.6V18.2c4.1-.2 6.3.5 8 2 1.7-1.5 3.9-2.2 8-2V4.6c-4.1-.2-6.3.5-8 2z" />
+    </>
+  ),
+  bulb: (
+    <>
+      <path d="M12 3.2a6 6 0 0 0-3.5 10.9c.6.5.9 1.1.9 1.8v.5h5.2v-.5c0-.7.3-1.3.9-1.8A6 6 0 0 0 12 3.2z" />
+      <path d="M9.6 19.4h4.8M10.4 21.6h3.2" />
     </>
   ),
   calendar: (
@@ -91,7 +99,6 @@ const SHAPES: Record<IconName, ReactNode> = {
       <path d="M10 3.4v3M14 3.4v3M10 17.6v3M14 17.6v3M3.4 10h3M3.4 14h3M17.6 10h3M17.6 14h3" />
     </>
   ),
-  dot: <circle cx="12" cy="12" r="5.5" fill="currentColor" stroke="none" />,
   heart: (
     <path d="M12 20.4C7.2 16.8 3.8 14 3.8 10.4a3.9 3.9 0 0 1 6.4-2.9l1.8 1.7 1.8-1.7a3.9 3.9 0 0 1 6.4 2.9c0 3.6-3.4 6.4-8.2 10z" />
   ),
@@ -117,18 +124,19 @@ const SHAPES: Record<IconName, ReactNode> = {
       <circle cx="16.8" cy="16.2" r="2.4" />
     </>
   ),
+  octagon: (
+    <>
+      <path d="M8.3 3.4h7.4L20.6 8.3v7.4L15.7 20.6H8.3L3.4 15.7V8.3z" />
+      <path d="M12 8v4.4" />
+      <circle cx="12" cy="16.2" r="0.9" fill="currentColor" stroke="none" />
+    </>
+  ),
   palette: (
     <>
       <path d="M12 3.4a8.8 8.8 0 0 0 0 17.4c1.4 0 2-1 1.7-2.1-.3-1.2.6-2.1 1.8-2.1h1.4a4 4 0 0 0 4-4c-.1-4.9-4-9.2-8.9-9.2z" />
       <circle cx="8.4" cy="11.2" r="1.1" fill="currentColor" stroke="none" />
       <circle cx="12" cy="8" r="1.1" fill="currentColor" stroke="none" />
       <circle cx="15.6" cy="11.2" r="1.1" fill="currentColor" stroke="none" />
-    </>
-  ),
-  pin: (
-    <>
-      <path d="M9.2 3.4h5.6l-.8 5.4 2.4 2.6H7.6l2.4-2.6z" />
-      <path d="M12 11.4v9.2" />
     </>
   ),
   plus: <path d="M12 5.4v13.2M5.4 12h13.2" />,
@@ -143,6 +151,13 @@ const SHAPES: Record<IconName, ReactNode> = {
       <path d="M5.4 4.4h10.2L19.6 8.4v11.2H5.4z" />
       <path d="M8.8 4.4v4.6h5.4V4.4" />
       <path d="M8.4 19.6v-5.4h7.2v5.4" />
+    </>
+  ),
+  school: (
+    <>
+      <path d="M12 3.4 21 8.2H3z" />
+      <path d="M5.4 8.2V19a1.4 1.4 0 0 0 1.4 1.4h10.4A1.4 1.4 0 0 0 18.6 19V8.2" />
+      <path d="M10 20.4v-4.6h4v4.6" />
     </>
   ),
   send: (
@@ -190,6 +205,14 @@ const SHAPES: Record<IconName, ReactNode> = {
       <path d="M4.8 20.6c.7-3.9 3.6-5.8 7.2-5.8s6.5 1.9 7.2 5.8" />
     </>
   ),
+  trash: (
+    <>
+      <path d="M4.6 6.8h14.8" />
+      <path d="M8.6 6.8V5.4c0-.7.5-1.2 1.2-1.2h4.4c.7 0 1.2.5 1.2 1.2v1.4" />
+      <path d="M6.4 6.8l.8 12.4c.05.9.8 1.6 1.7 1.6h6.2c.9 0 1.65-.7 1.7-1.6l.8-12.4" />
+      <path d="M10.4 10.4v6.4M13.6 10.4v6.4" />
+    </>
+  ),
 };
 
 export function Icon({
@@ -225,7 +248,7 @@ export function Icon({
   );
 }
 
-/** BalanceED mark — scales of justice drawn as line work so it inherits the current text colour. */
+/** BalanceEd mark — one beam, two pans, drawn so it reads clearly at 20px. */
 export function BrandMark({ size = 22, className }: { size?: number; className?: string }) {
   return (
     <svg
@@ -234,20 +257,18 @@ export function BrandMark({ size = 22, className }: { size?: number; className?:
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.6}
+      strokeWidth={1.7}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
       aria-hidden
     >
-      <circle cx="12" cy="3.6" r="1.2" />
-      <path d="M12 4.8v16" />
-      <path d="M5.4 6.9h13.2" />
-      <path d="M5.4 6.9 2.8 11.2M5.4 6.9 8 11.2" />
-      <path d="M2.8 11.2a2.6 2.6 0 0 0 5.2 0" />
-      <path d="M18.6 6.9 16 11.2M18.6 6.9 21.2 11.2" />
-      <path d="M16 11.2a2.6 2.6 0 0 0 5.2 0" />
-      <path d="M8.4 20.8h7.2" />
+      <circle cx="12" cy="3.9" r="1.3" />
+      <path d="M12 5.2v14.4" />
+      <path d="M4.4 7.4h15.2" />
+      <path d="M4.4 7.4v3.4M19.6 7.4v3.4" />
+      <path d="M2 10.8a2.4 2.4 0 0 0 4.8 0M17.2 10.8a2.4 2.4 0 0 0 4.8 0" />
+      <path d="M8.6 19.6h6.8" />
     </svg>
   );
 }

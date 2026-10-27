@@ -604,6 +604,12 @@ export const resolvers = {
       }
       const opp = db.opportunities.byId(opportunityId);
       if (!opp) throw new UserInputError('Боломж олдсонгүй.');
+      if (db.signups.opportunityIdsFor(user.studentId).has(opportunityId)) {
+        throw new UserInputError('Энэ боломд аль хэдийн бүртгэлтэй байна.');
+      }
+      if (opp.deadline && new Date(`${opp.deadline}T23:59:59`).getTime() < Date.now()) {
+        throw new UserInputError('Бүртгэл хаагдсан — сүүлийн огноо өнгөрсөн байна.');
+      }
       db.signups.add(opportunityId, user.studentId);
       return asView(opp, user.studentId);
     },

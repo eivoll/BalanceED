@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { attempt, M, Q, type AnalysisDTO, type AssignmentDTO, type ExamDTO, type OpportunityDTO, type ScheduleItemDTO, type StudentDTO } from '../api';
+import { attempt, M, Q, type AnalysisDTO, type AssignmentDTO, type ExamDTO, type OpportunityDTO, type ScheduleItemDTO, type SchoolHourInput, type StudentDTO } from '../api';
 import AboutMeEditor, { AddScheduleForm } from './AboutMeEditor';
 import AnalysisPanel from './AnalysisPanel';
 import AssignmentsPanel from './AssignmentsPanel';
 import OpportunityHub from './OpportunityHub';
 import ScheduleGrid from './ScheduleGrid';
-import { Card, Donut, GaugeDial, StatusIcon, fmtDate, useToast } from './shared';
+import { SchoolHoursCard } from './SchoolHoursEditor';
+import { Card, Donut, GaugeDial, StatusIcon, StressMeter, fmtDate, useToast } from './shared';
 import { Icon, type IconName } from './icons';
 
 type Tab = 'schedule' | 'academics' | 'opportunities' | 'analysis' | 'aboutme';
@@ -14,7 +15,7 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
   { id: 'schedule', label: 'Хуваарь', icon: 'calendar' },
   { id: 'academics', label: 'Даалгавар & шалгалт', icon: 'book' },
   { id: 'opportunities', label: 'Боломжууд', icon: 'target' },
-  { id: 'analysis', label: 'AI шинжилгээ', icon: 'cpu' },
+  { id: 'analysis', label: 'AI шинжилгээ', icon: 'bulb' },
   { id: 'aboutme', label: 'Танилцуулга', icon: 'user' },
 ];
 
@@ -31,6 +32,7 @@ export default function StudentView({
   const [exams, setExams] = useState<ExamDTO[]>([]);
   const [matched, setMatched] = useState<OpportunityDTO[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisDTO | null>(null);
+  const [schoolHours, setSchoolHours] = useState<SchoolHourInput[] | null>(null);
   const [verified, setVerified] = useState(student.parentVerification);
   const { toastError, node: toastNode } = useToast();
 
@@ -40,6 +42,7 @@ export default function StudentView({
     Q.exams(student.id).then((d) => setExams(d.exams));
     Q.matched(student.id).then((d) => setMatched(d.matchedOpportunities));
     Q.analysis(student.id).then((d) => setAnalysis(d.workloadAnalysis));
+    Q.schoolHours(student.id).then((d) => setSchoolHours(d.schoolHours));
   }, [student.id]);
 
   useEffect(() => {
@@ -95,6 +98,15 @@ export default function StudentView({
                 <GaugeDial score={analysis.workloadAnalysis.workloadScore} />
               </div>
             )}
+            {analysis && (
+              <div className="hidden lg:block">
+                <StressMeter
+                  score={analysis.workloadAnalysis.stressScore}
+                  risk={analysis.workloadAnalysis.stressRisk}
+                  width={150}
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -123,6 +135,14 @@ export default function StudentView({
             <Card title="Долоо хоногийн хуваарь" subtitle="Бүртгэгдээгүй үлдсэн цагууд автоматаар чөлөөт цаг болж тэмдэглэгдэнэ">
               <ScheduleGrid items={schedule} editable onRemove={removeItem} />
             </Card>
+            {schoolHours && (
+              <SchoolHoursCard
+                key={JSON.stringify(schoolHours)}
+                studentId={student.id}
+                initial={schoolHours}
+                onSaved={() => { reload(); onStudentsChanged(); }}
+              />
+            )}
             <AddScheduleForm studentId={student.id} onAdded={() => { reload(); onStudentsChanged(); }} />
           </>
         )}

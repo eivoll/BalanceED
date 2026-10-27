@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { DAYS } from '../../shared/types';
 import { attempt, M, type StudentDTO } from '../api';
 import { useA11y } from '../accessibility';
+import { TimeRangeFields } from './DateTimeField';
 import { Card, DAY_MN, useToast } from './shared';
 import { Icon, type IconName } from './icons';
 
@@ -111,9 +112,9 @@ export default function AboutMeEditor({ student, onSaved }: { student: StudentDT
   return (
     <Card title="Миний танилцуулга" subtitle="Сонирхол · ур чадвар · зорилго — AI эдгээрт үндэслэн боломж санал болгоно">
       <div className="grid grid-cols-1 gap-4">
-        <TagEditor label="Сонирхол" placeholder="#DigitalArt гэж бичээд Enter" icon="heart" tone="interest" initial={student.aboutMe.interests} onChange={setInterests} />
-        <TagEditor label="Ур чадвар" placeholder="Python, Graphic Design…" icon="star" tone="skill" initial={student.aboutMe.skills} onChange={setSkills} />
-        <TagEditor label="Мэргэжлийн зорилго" placeholder="UX Designer…" icon="target" tone="goal" initial={student.aboutMe.careerGoals} onChange={setGoals} />
+        <TagEditor label="Сонирхол" placeholder="#Дизайн гэж бичээд Enter" icon="heart" tone="interest" initial={student.aboutMe.interests} onChange={setInterests} />
+        <TagEditor label="Ур чадвар" placeholder="График дизайн, багийн ажил…" icon="star" tone="skill" initial={student.aboutMe.skills} onChange={setSkills} />
+        <TagEditor label="Мэргэжлийн зорилго" placeholder="Дизайнер, инженер…" icon="target" tone="goal" initial={student.aboutMe.careerGoals} onChange={setGoals} />
       </div>
       <div className="mt-5">
         <button className="btn-grad" disabled={saving} onClick={save}>
@@ -157,14 +158,11 @@ export function AddScheduleForm({ studentId, onAdded }: { studentId: string; onA
             ))}
           </select>
         </div>
-        <div>
-          <span className="label">Эхлэх</span>
-          <input type="time" className="field" value={start} onChange={(e) => setStart(e.target.value)} />
-        </div>
-        <div>
-          <span className="label">Дуусах</span>
-          <input type="time" className="field" value={end} onChange={(e) => setEnd(e.target.value)} />
-        </div>
+        <TimeRangeFields
+          start={start}
+          end={end}
+          onChange={(next) => { setStart(next.start); setEnd(next.end); }}
+        />
         <div>
           <span className="label">Үйл ажиллагаа</span>
           <div className="flex gap-2">

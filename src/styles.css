@@ -161,6 +161,8 @@ html.dark {
 .sched-cell { @apply relative border-b border-r border-line/60 p-1 align-top; }
 .sched-free { @apply bg-free/70; }
 .sched-busy { @apply bg-busy shadow-[inset_2px_0_0_rgb(var(--c-accent)/0.35)]; }
+/* The timetable is fixed, so it is tinted like the accent but never looks editable. */
+.sched-school { @apply bg-accent/10 shadow-[inset_2px_0_0_rgb(var(--c-accent)/0.45)]; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
