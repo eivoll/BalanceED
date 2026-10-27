@@ -34,7 +34,7 @@ export function A11yProvider({ children }: { children: ReactNode }) {
         const SR =
           (window as unknown as { SpeechRecognition?: new () => SpeechRec }).SpeechRecognition ??
           (window as unknown as { webkitSpeechRecognition?: new () => SpeechRec }).webkitSpeechRecognition;
-        if (!SR) return { supported: false, start: () => alert('Voice input is not supported in this browser. Дуу оруулга энэ хөтчид дэмжигдэхгүй.') };
+        if (!SR) return { supported: false, start: () => alert('Энэ хөтөч дээр ярианы оруулга дэмжигдэхгүй байна.') };
         let started = false;
         return {
           supported: true,

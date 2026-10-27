@@ -118,6 +118,12 @@ const DAY_MN: Record<Day, string> = {
   Sunday: 'Ням',
 };
 
+/** Sentences here are read verbatim by parents, so dates cannot stay in ISO form. */
+function mnDate(iso: string): string {
+  const d = new Date(`${iso.slice(0, 10)}T12:00:00`);
+  return Number.isNaN(d.getTime()) ? iso : `${d.getMonth() + 1} сарын ${d.getDate()}`;
+}
+
 export function matchOpportunities(student: StudentProfile, free: WeeklyScheduleItem[]): OpportunityWithMatch[] {
   const interests = student.aboutMe.interests.map(normalize);
   const skills = student.aboutMe.skills.map(normalize);
@@ -150,12 +156,19 @@ export function matchOpportunities(student: StudentProfile, free: WeeklySchedule
       const matchedSkills = opp.requiredSkills.filter((r) =>
         skills.includes(normalize(r)),
       );
-      const why: string[] = [];
-      if (matchedSkills.length) why.push(`ур чадвар (${matchedSkills.join(', ')})`);
-      if (interestHit) why.push(`сонирхол (${student.aboutMe.interests[0] ?? '—'})`);
-      const reason = why.length
-        ? `Таны ${why.join(' болон ')}-тай нийцэж, ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтаж байна.`
-        : `Шууд ур чадварын нийц багатай ч ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтах тул шинэ ур чадвар эзэмшихэд тохиромжтой.`;
+      const kinds: string[] = [];
+      const matched: string[] = [];
+      if (matchedSkills.length) {
+        kinds.push('ур чадвар');
+        matched.push(...matchedSkills);
+      }
+      if (interestHit) {
+        kinds.push('сонирхол');
+        matched.push(student.aboutMe.interests[0] ?? '—');
+      }
+      const reason = matched.length
+        ? `Таны ${kinds.join(' болон ')}той (${matched.join(', ')}) нийцэж, ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтаж байна.`
+        : `Шаардагдсан ур чадвартай давхцахгүй ч ${DAY_MN[opp.day]} гарагийн ${opp.timeSlot} чөлөөт цагт багтах тул шинэ ур чадвар эзэмшихэд тохиромжтой.`;
       return { ...opp, matchScore: `${score}%`, matchReasonMongolian: reason };
     })
     .sort((a, b) => parseInt(b.matchScore) - parseInt(a.matchScore));
@@ -187,7 +200,7 @@ function detectConflicts(
       conflicts.push({
         examOrAssignment: `${exam.subject} шалгалт`,
         date: exam.examDate,
-        conflictDescriptionMongolian: `${exam.subject} шалгалт (${exam.examDate}) ${DAY_MN[day]} гарагт товлогдсон бөгөөд тэр өдөр ${hours.toFixed(1)} цагийн хичээлээс гадуурх ачаалалтай давхцаж байна.`,
+        conflictDescriptionMongolian: `${exam.subject} шалгалт (${mnDate(exam.examDate)}) ${DAY_MN[day]} гарагт товлогдсон бөгөөд тэр өдөр ${hours.toFixed(1)} цагийн хичээлээс гадуурх ачаалалтай давхцаж байна.`,
       });
     }
   }
@@ -198,7 +211,7 @@ function detectConflicts(
       conflicts.push({
         examOrAssignment: a.title,
         date: a.dueDate,
-        conflictDescriptionMongolian: `"${a.title}" даалгаврын хугацаа (${a.dueDate}) ${DAY_MN[day]} гарагийн ${hours.toFixed(1)} цагийн ачаалалтай давхцаж байна.`,
+        conflictDescriptionMongolian: `«${a.title}» даалгаврын хугацаа (${mnDate(a.dueDate)}) ${DAY_MN[day]} гарагийн ${hours.toFixed(1)} цагийн ачаалалтай давхцаж байна.`,
       });
     }
   }
@@ -263,8 +276,9 @@ async function gemmaEnrich(student: StudentProfile, facts: WorkloadFacts): Promi
   if (!gemmaEnabled) return {};
   const prompt = `Чи бол BalanceEd платформын AI туслах. Доорх мэдээлэлд үндэслэн Монгол хэлээр 4 хэсэг бүтээ. Зөвхөн JSON буцаа (markdown хэрэглэхгүй).
 Сурагч: ${student.name}, ${student.grade}, ${student.school}
-Ачааллын оноо (1-10): ${facts.score}, гүйцэтгэл: ${facts.completionPercentage}%, удахгүй шалгалт: ${facts.upcomingExams.map((e) => `${e.subject} (${e.examDate})`).join(', ') || 'байхгүй'}
-Давхцал: ${facts.conflicts.map((c) => `${c.examOrAssignment} ${c.date}`).join('; ') || 'байхгүй'}
+Ачааллын оноо (1-10): ${facts.score}, гүйцэтгэл: ${facts.completionPercentage}%, ойрын шалгалт: ${facts.upcomingExams.map((e) => `${e.subject} (${mnDate(e.examDate)})`).join(', ') || 'байхгүй'}
+Давхцал: ${facts.conflicts.map((c) => `${c.examOrAssignment} ${mnDate(c.date)}`).join('; ') || 'байхгүй'}
+Огноог зааварчилгаагүйгээр "10 сарын 29" хэлбэрээр бич.
 
 JSON түлхүүрүүд:
 "aiSummaryMongolian": эцэг эхэд зориулсан 2-3 өгүүлбэрийн эелдэг тойм,
@@ -296,18 +310,18 @@ export async function buildWorkloadAnalysis(student: StudentProfile) {
   const deadlineAdjustments =
     ai.deadlineAdjustments ??
     (facts.conflicts.length
-      ? `${facts.conflicts[0].examOrAssignment} (${facts.conflicts[0].date}) хугацааг хамгийн их ачаалалтай өдрөөс хойш хоёр хоног сунгахыг зөвлөж байна.`
+      ? `${facts.conflicts[0].examOrAssignment} (${mnDate(facts.conflicts[0].date)}) хугацааг хамгийн их ачаалалтай өдрөөс хойш хоёр хоног сунгахыг зөвлөж байна.`
       : 'Одоогоор хугацаа сунгах шаардлагагүй — хуваарь тэнцвэртэй байна.');
 
   const examPrepAdvice =
     ai.examPrepAdvice ??
     (facts.upcomingExams.length
-      ? `${facts.upcomingExams[0].subject} шалгалтад (${facts.upcomingExams[0].examDate}) бэлтгэхийн тулд чөлөөт цагийн хэсгүүдийг 45 минутын блокт хувааж, шалгалтын өмнөх өдөр хүнд үйл ажиллагаа төлөвлөхөөс зайлсхий.`
-      : 'Удахгүй шалгалт байхгүй тул тогтмол давталтаар сэдвүүдээ батжуулаарай.');
+      ? `${facts.upcomingExams[0].subject} шалгалтад (${mnDate(facts.upcomingExams[0].examDate)}) бэлтгэхийн тулд чөлөөт цагаа 45 минутын хэсэгт хувааж, шалгалтын өмнөх өдөр их ачаалалтай үйл ажиллагаа төлөвлөхөөс зайлсхийгээрэй.`
+      : 'Ойрын хугацаанд шалгалт товлогдоогүй тул тогтмол давталтаар сэдвүүдээ батжуулаарай.');
 
   const progressSummaryMongolian =
     ai.progressSummaryMongolian ??
-    `Таны хүүхэд ${facts.total} даалгавраас ${facts.completed}-г гүйцэтгэсэн (${facts.completionPercentage}% биелэлт). ${facts.upcomingExams.length ? `Удахгүй ${facts.upcomingExams.map((e) => `${e.subject} (${e.examDate})`).join(', ')} шалгалт байна. ` : ''}Ачааллын оноо ${facts.score}/10, стрессийн эрсдэл ${riskMn(facts.stressRisk, false)} түвшинд байна.`;
+    `Таны хүүхэд ${facts.total} даалгавраас ${facts.completed}-г гүйцэтгэсэн (${facts.completionPercentage}%). ${facts.upcomingExams.length ? `Ойрын өдрүүдэд ${facts.upcomingExams.map((e) => `${e.subject} (${mnDate(e.examDate)})`).join(', ')} шалгалт байна. ` : ''}Ачааллын оноо ${facts.score}/10, стрессийн эрсдэл ${riskMn(facts.stressRisk, false)} түвшинд байна.`;
 
   return {
     studentName: student.name,

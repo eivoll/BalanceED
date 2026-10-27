@@ -30,7 +30,7 @@ const DENIAL: Record<Action, string> = {
 };
 
 function currentUser(ctx: Ctx): UserAccount {
-  if (!ctx.user) throw new AuthenticationError('Энэ үйлдлийн тулд эхлээд нэвтэрнэ үү.');
+  if (!ctx.user) throw new AuthenticationError('Энэ үйлдлийг хийхийн тулд эхлээд нэвтэрнэ үү.');
   return ctx.user;
 }
 
@@ -76,9 +76,9 @@ function authorizeItem(ctx: Ctx, table: 'schedule' | 'assignments' | 'exams', id
 const SLOT_RE = /^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-3]):[0-5]\d$/;
 
 function validateSlot(timeSlot: string) {
-  if (!SLOT_RE.test(timeSlot)) throw new UserInputError(`Цагийн завсар буруу байна: "${timeSlot}", хэлбэр HH:MM-HH:MM`);
+  if (!SLOT_RE.test(timeSlot)) throw new UserInputError(`Цагийн завсар буруу байна: "${timeSlot}" — зөв хэлбэр нь HH:MM-HH:MM`);
   const [a, b] = timeSlot.split('-');
-  if (a >= b) throw new UserInputError(`Цагийн завсар буруу байна: "${timeSlot}" — эхлэх цаг дуусахаас өмнө байх ёстой`);
+  if (a >= b) throw new UserInputError(`Цагийн завсар буруу байна: "${timeSlot}" — эхлэх цаг дуусах цагаас өмнө байх ёстой`);
 }
 
 function fullSchedule(studentId: string): WeeklyScheduleItem[] {

@@ -28,7 +28,7 @@ function Shell() {
         setBooting(false);
       })
       .catch((err) => {
-        setBootError(err instanceof Error ? err.message : 'Серверт хүрсэнгүй.');
+        setBootError(err instanceof Error ? err.message : 'Серверт холбогдсонгүй.');
         setBooting(false);
       });
   }, []);
@@ -125,11 +125,11 @@ function Shell() {
             <p className="text-lg font-bold text-danger"><StatusIcon level="danger" /> Серверт холбогдоход асуудал гарлаа</p>
             <p className="mx-auto max-w-md text-sm leading-relaxed">{bootError}</p>
             <p className="mx-auto max-w-md text-xs">
-              Сервер ажиллаж байгаа эсэхийг шалгаад (<code className="rounded bg-page px-1.5 py-0.5 font-mono text-[11px]">npm run dev</code>) дахин оролд.
+              Сервер ажиллаж байгаа эсэхийг шалгаад (<code className="rounded bg-page px-1.5 py-0.5 font-mono text-[11px]">npm run dev</code>) дахин оролдоно уу.
             </p>
             <div>
               <button className="btn-grad" onClick={refresh}>
-                <Icon name="refresh" size={16} /> Дахин оролд
+                <Icon name="refresh" size={16} /> Дахин оролдох
               </button>
             </div>
           </div>
@@ -147,7 +147,7 @@ function Shell() {
           )}
           {user.role === 'parent' && !students.length && (
             <div className="glass p-8 text-center text-sm text-muted">
-              Таны хүүхэд аль хэдийн нэг багштай холбогдоогүй байна. Багшаасаа и-мэйл холболт аваарай.
+              Таны хүүхэд хараахан аль нэг багштай холбогдоогүй байна. Багшаасаа и-мэйл урилга авна уу.
             </div>
           )}
         </main>
@@ -156,8 +156,8 @@ function Shell() {
       <footer className="mt-10 border-t border-line/70 pt-5 text-center text-xs leading-relaxed text-muted">
         <p className="font-bold text-ink">BalanceEd</p>
         <p className="mx-auto mt-1.5 max-w-md">
-          Ачааллын оноо нь хуваарь, даалгавар, шалгалтаас автоматаар тооцогддог бөгөөд зөвхөн зөвлөгөө болно.
-          Эцэг эх, багш, сурагч хамт шийдвэрлэнэ.
+          Ачааллын оноо нь хуваарь, даалгавар, шалгалтаас автоматаар тооцогддог бөгөөд энэ нь зөвхөн зөвлөгөө юм.
+          Эцэг эх, багш, сурагч хамтдаа шийдвэрлэнэ.
         </p>
         <p className="mt-2">© 2026 BalanceEd · Сурагчийн мэдээлэл таны серверт л хадгалагдана</p>
       </footer>

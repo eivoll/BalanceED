@@ -13,13 +13,13 @@ export async function gql<T = unknown>(
       body: JSON.stringify({ query, variables }),
     });
   } catch {
-    throw new Error('Серверт хүрсэнгүй — ажиллаж байгаа эсэхийг шалга.');
+    throw new Error('Серверт холбогдсонгүй — ажиллаж байгаа эсэхийг шалгана уу.');
   }
   let json: { data?: T; errors?: { message: string }[] };
   try {
     json = (await res.json()) as { data?: T; errors?: { message: string }[] };
   } catch {
-    throw new Error('Серверийн хариу уншигдахгүй байна.');
+    throw new Error('Серверийн хариуг уншиж чадсангүй.');
   }
   if (json.errors?.length) throw new Error(json.errors[0].message);
   return json.data as T;
@@ -31,7 +31,7 @@ export async function attempt(action: () => Promise<unknown>): Promise<string | 
     await action();
     return null;
   } catch (err) {
-    return err instanceof Error ? err.message : 'Серверт хүрсэнгүй, дахин оролд.';
+    return err instanceof Error ? err.message : 'Серверт холбогдсонгүй. Дахин оролдоно уу.';
   }
 }
 

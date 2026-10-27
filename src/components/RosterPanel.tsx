@@ -45,7 +45,7 @@ export default function RosterPanel({
     setBusy(false);
     if (problem) return toastError(problem);
     setName(''); setEmail(''); setPassword(''); setParentEmail(''); setParentName('');
-    toast('Сурагч ба бүртгэл нь үүслээ');
+    toast('Сурагч болон түүний бүртгэл үүслээ');
     onChanged();
   }
 
@@ -62,7 +62,7 @@ export default function RosterPanel({
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card
           title="Сурагч нэмэх"
-          subtitle="Сурагчийн мэдээлэл, нэвтрэх бүртгэл, эцэг эхийн холболт зэрэг үүснэ"
+          subtitle="Сурагчийн мэдээлэл, нэвтрэх бүртгэл, эцэг эхийн холболт автоматаар үүснэ"
         >
           <form className="grid grid-cols-1 gap-3 sm:grid-cols-2" onSubmit={add}>
             <div className="sm:col-span-2">
@@ -107,12 +107,12 @@ export default function RosterPanel({
           </p>
         </Card>
 
-        <Card title="Миний анги" subtitle={`${students.length} сурагч · жагсаалтаас устгавал хуваарь, даалгавар, бүртгэл хамт устах нь`}
+        <Card title="Миний анги" subtitle={`${students.length} сурагч · жагсаалтаас устгавал хуваарь, даалгавар, бүртгэл хамт устана`}
           actions={<Pill tone="info">Багшийн жагсаалт</Pill>}
         >
           {students.length === 0 ? (
             <p className="rounded-xl border border-line bg-surface px-4 py-6 text-center text-xs text-muted">
-              Одоогоор танд сурагч байхгүй. Баруун талын формоор нэмээрэй.
+              Одоогоор танд сурагч байхгүй. Маягтыг бөглөж шинэ сурагч нэмээрэй.
             </p>
           ) : (
             <ul className="grid grid-cols-1 gap-2">
