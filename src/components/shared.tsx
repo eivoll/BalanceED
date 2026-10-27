@@ -229,19 +229,28 @@ export function CoachCard({ children, title = 'AI зөвлөгөө' }: { childre
 }
 
 /** Mini category icon for schedule activities — both languages, because teachers post in either. */
-const CAT_PATTERNS: [RegExp, IconName][] = [
-  [/сагс|бөмбөг|хөвтөр|тэмцээн|дасгал|бөх|хармаг|гүрлэг|sport|basket|football|judo|swim|gym|tournament/, 'activity'],
-  [/робот|програм|код|python|figma|мэдээлэл зүй|stem|robot|code|computer/, 'cpu'],
-  [/хөгжим|пиани|гитар|дуун|концерт|music|piano|choir|concert/, 'music'],
-  [/зураг|дизайн|урлаг|савдар|гар ур|арт|art|design|draw|paint|mural/, 'palette'],
-  [/маргаа|илтгэл|унш|цэвэр яриа|speech|debate|reading|essay/, 'speech'],
-  [/сайн дурын|хандив|асрах|номын сан|мод суулг|нийгэм|volunteer|charity|library|community|babysit/, 'heart'],
-  [/математик|физи|хими|биологи|түүх|газар зүй|давталт|лабор|tutor|math|physic|chem|science|calc|lab/, 'book'],
+const CAT_PATTERNS: [RegExp, IconName, string][] = [
+  [/сагс|бөмбөг|хөвтөр|тэмцээн|дасгал|бөх|хармаг|гүрлэг|sport|basket|football|judo|swim|gym|tournament/, 'activity', 'Спорт'],
+  [/робот|програм|код|python|figma|мэдээлэл зүй|stem|robot|code|computer/, 'cpu', 'Кодчлол'],
+  [/хөгжим|пиани|гитар|дуун|концерт|music|piano|choir|concert/, 'music', 'Хөгжим'],
+  [/зураг|дизайн|урлаг|савдар|гар ур|арт|art|design|draw|paint|mural/, 'palette', 'Урлаг'],
+  [/маргаа|илтгэл|унш|цэвэр яриа|speech|debate|reading|essay/, 'speech', 'Маргаа'],
+  [/сайн дурын|хандив|асрах|номын сан|мод суулг|нийгэм|volunteer|charity|library|community|babysit/, 'heart', 'Нийгэмд'],
+  [/математик|физи|хими|биологи|түүх|газар зүй|давталт|лабор|tutor|math|physic|chem|science|calc|lab/, 'book', 'Хичээл'],
 ];
 
+function catOf(text: string): [RegExp, IconName, string] | undefined {
+  const a = text.toLowerCase();
+  return CAT_PATTERNS.find(([re]) => re.test(a));
+}
+
 export function catIcon(activity: string): IconName {
-  const a = activity.toLowerCase();
-  return CAT_PATTERNS.find(([re]) => re.test(a))?.[1] ?? 'clock';
+  return catOf(activity)?.[1] ?? 'clock';
+}
+
+/** Category label for an opportunity or activity; empty when nothing matches. */
+export function catTag(activity: string): string {
+  return catOf(activity)?.[2] ?? '';
 }
 
 /** Mongolian dates read month-first ("10 сарын 29"); the browser's mn-MN locale data is not reliable. */

@@ -151,7 +151,7 @@ export default function StudentView({
           <AssignmentsPanel assignments={assignments} exams={exams} onChanged={reload} />
         )}
 
-        {tab === 'opportunities' && <OpportunityHub items={matched} />}
+        {tab === 'opportunities' && <OpportunityHub items={matched} onChanged={reload} />}
 
         {tab === 'analysis' && analysis && <AnalysisPanel analysis={analysis} />}
 

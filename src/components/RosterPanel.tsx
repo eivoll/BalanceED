@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { type Day } from '../../shared/types';
 import { M, attempt, type StudentDTO } from '../api';
+import { SchoolHoursFields, toEntries, weekdayPreset, type DayRow } from './SchoolHoursEditor';
 import { Icon } from './icons';
 import { Card, Pill, useToast } from './shared';
 
@@ -20,6 +22,8 @@ export default function RosterPanel({
   const [password, setPassword] = useState('');
   const [parentEmail, setParentEmail] = useState('');
   const [parentName, setParentName] = useState('');
+  const [parentPassword, setParentPassword] = useState('');
+  const [rows, setRows] = useState<Record<Day, DayRow>>(weekdayPreset);
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState('');
   const { toast, toastError, node } = useToast();
@@ -30,6 +34,11 @@ export default function RosterPanel({
       return toastError('Нэр, сургууль, и-мэйл заавал бөглөнө үү.');
     }
     if (password.length < 8) return toastError('Сурагчийн нууц үг дор хаяж 8 тэмдэгт байх.');
+    if (parentEmail.trim() && parentPassword.length < 8) {
+      return toastError('Эцэг эхийн и-мэйл заасан бол нууц үг нь мөн 8+ тэмдэгт байх ёстой.');
+    }
+    const schoolHours = toEntries(rows);
+    if (!schoolHours.length) return toastError('Долоо хоногийн хичээлийн цагийг дор хаяж нэг өдрөөр заана уу.');
     setBusy(true);
     const problem = await attempt(() =>
       M.createStudent({
@@ -40,11 +49,13 @@ export default function RosterPanel({
         password,
         parentEmail: parentEmail.trim() || undefined,
         parentName: parentName.trim() || undefined,
+        parentPassword: parentEmail.trim() ? parentPassword : undefined,
+        schoolHours,
       }),
     );
     setBusy(false);
     if (problem) return toastError(problem);
-    setName(''); setEmail(''); setPassword(''); setParentEmail(''); setParentName('');
+    setName(''); setEmail(''); setPassword(''); setParentEmail(''); setParentName(''); setParentPassword('');
     toast('Сурагч болон түүний бүртгэл үүслээ');
     onChanged();
   }
@@ -62,7 +73,7 @@ export default function RosterPanel({
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card
           title="Сурагч нэмэх"
-          subtitle="Сурагчийн мэдээлэл, нэвтрэх бүртгэл, эцэг эхийн холболт автоматаар үүснэ"
+          subtitle="Сурагчийн мэдээлэл, нэвтрэх бүртгэл, хичээлийн цаг, эцэг эхийн холболт үүснэ"
         >
           <form className="grid grid-cols-1 gap-3 sm:grid-cols-2" onSubmit={add}>
             <div className="sm:col-span-2">
@@ -89,12 +100,26 @@ export default function RosterPanel({
             </div>
             <div>
               <span className="label">Эцэг эхийн и-мэйл <span className="font-normal text-muted">(сонголттой)</span></span>
-              <input className="field" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="parent@gmail.com" />
+              <input className="field" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="oyun@mail.mn" />
             </div>
             <div>
               <span className="label">Эцэг эхийн нэр <span className="font-normal text-muted">(сонголттой)</span></span>
               <input className="field" value={parentName} onChange={(e) => setParentName(e.target.value)} placeholder="Т. Оюун" />
             </div>
+            <div className="sm:col-span-2">
+              <span className="label">Эцэг эхийн нууц үг <span className="font-normal text-muted">(зөвхөн и-мэйл бөглөсөн бол)</span></span>
+              <input className="field" type="text" value={parentPassword} onChange={(e) => setParentPassword(e.target.value)} placeholder="8+ тэмдэгт" />
+            </div>
+
+            <div className="sm:col-span-2 mt-1">
+              <span className="label">Долоо хоногийн хичээлийн цаг</span>
+              <SchoolHoursFields
+                value={rows}
+                onChange={setRows}
+                hint="Энэ цаг чөлөөт цагт тооцогдохгүй — сурагчийн хуваарь дүүрэн эсэхийг үүгээр шалгана."
+              />
+            </div>
+
             <div className="sm:col-span-2">
               <button type="submit" className="btn-grad" disabled={busy}>
                 {busy ? 'Үүсгэж байна…' : <><Icon name="plus" size={16} /> Сурагч нэмэх</>}

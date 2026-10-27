@@ -57,7 +57,7 @@ export const A = {
     ).then((d) => d.login),
   signup: (input: SignupInput) =>
     gql<{ signup: AuthUserDTO }>(
-      `mutation ($i: SignupInput!) { signup(input: $i) { id email displayName role students { ${STUDENT_FIELDS} } } }`,
+      `mutation ($i: StudentInput!) { signup(input: $i) { id email displayName role students { ${STUDENT_FIELDS} } } }`,
       { i: input },
     ).then((d) => d.signup),
   logout: () => gql(`mutation { logout }`),

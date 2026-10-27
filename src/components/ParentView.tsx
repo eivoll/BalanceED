@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { attempt, M, Q, type AnalysisDTO, type ScheduleItemDTO, type StudentDTO } from '../api';
 import ScheduleGrid from './ScheduleGrid';
 import { Icon } from './icons';
-import { Card, CoachCard, Donut, Pill, RISK_MN, ScoreBadge, StatusIcon, fmtDate, riskLevel, useToast } from './shared';
+import { Card, CoachCard, Donut, Pill, ScoreBadge, StatusIcon, StressMeter, fmtDate, useToast } from './shared';
 
 export default function ParentView({ student, onStudentsChanged }: { student: StudentDTO; onStudentsChanged: () => void }) {
   const [schedule, setSchedule] = useState<ScheduleItemDTO[]>([]);
@@ -28,6 +28,7 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
   }
 
   const progress = analysis?.academicProgress;
+  const topDrivers = (analysis?.workloadAnalysis.stressDrivers ?? []).filter((d) => d.impact > 0).slice(0, 3);
 
   return (
     <div className="grid grid-cols-1 gap-5">
@@ -64,7 +65,7 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
       {analysis && progress && (
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card title="2 · Бодит цагийн дэвшил" subtitle="Даалгаврын гүйцэтгэл шууд шинэчлэгдэнэ">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-6">
               <Donut pct={progress.completionPercentage} label="Гүйцэтгэл" />
               <div className="grid grid-cols-1 gap-2 text-sm">
                 <p className="font-semibold">
@@ -77,11 +78,24 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
                 <p className="flex items-center gap-2">
                   Ачаалал: <ScoreBadge score={analysis.workloadAnalysis.workloadScore} />
                 </p>
-                <Pill tone={analysis.workloadAnalysis.stressRisk === 'High' ? 'bad' : analysis.workloadAnalysis.stressRisk === 'Medium' ? 'info' : 'good'}>
-                  Стрессийн эрсдэл: {RISK_MN[analysis.workloadAnalysis.stressRisk] ?? analysis.workloadAnalysis.stressRisk} <StatusIcon level={riskLevel(analysis.workloadAnalysis.stressRisk)} />
-                </Pill>
               </div>
+              <StressMeter
+                score={analysis.workloadAnalysis.stressScore}
+                risk={analysis.workloadAnalysis.stressRisk}
+                width={170}
+              />
             </div>
+            {topDrivers.length > 0 && (
+              <ul className="mt-4 grid grid-cols-1 gap-1.5 border-t border-line/70 pt-3 text-xs">
+                {topDrivers.map((d) => (
+                  <li key={d.labelMongolian} className="flex items-start gap-2">
+                    <StatusIcon level={d.tone} />
+                    <span className="font-semibold">{d.labelMongolian}</span>
+                    <span className="ml-auto shrink-0 font-bold tabular-nums text-muted">+{d.impact}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {progress.scheduleConflicts.length > 0 && (
               <ul className="mt-4 grid grid-cols-1 gap-2">
                 {progress.scheduleConflicts.map((c, i) => (
@@ -93,8 +107,16 @@ export default function ParentView({ student, onStudentsChanged }: { student: St
             )}
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 border-t border-line/70 pt-3 text-xs">
               <div className="flex items-baseline justify-between gap-2">
-                <dt className="text-muted">Долоо хоногийн ачаалал</dt>
+                <dt className="text-muted">Сургуулийн хичээл</dt>
+                <dd className="font-bold tabular-nums">{analysis.weeklyScheduleSummary.schoolHours} цаг</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Хичээлээс гадуурх ажил</dt>
                 <dd className="font-bold tabular-nums">{analysis.weeklyScheduleSummary.totalActivityHours} цаг</dd>
+              </div>
+              <div className="flex items-baseline justify-between gap-2">
+                <dt className="text-muted">Чөлөөт цаг</dt>
+                <dd className="font-bold tabular-nums">{analysis.weeklyScheduleSummary.freeHours} цаг</dd>
               </div>
               <div className="flex items-baseline justify-between gap-2">
                 <dt className="text-muted">Товлогдсон үйл ажиллагаа</dt>

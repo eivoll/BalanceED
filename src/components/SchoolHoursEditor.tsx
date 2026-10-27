@@ -26,6 +26,13 @@ export function rowsFrom(entries: SchoolHourInput[]): Record<Day, DayRow> {
   return map;
 }
 
+/** The shape most Mongolian timetables actually have — where a blank form starts. */
+export function weekdayPreset(): Record<Day, DayRow> {
+  const rows = blankRows();
+  for (const d of DAYS) rows[d] = { on: d !== 'Saturday' && d !== 'Sunday', start: '08:00', end: '15:00' };
+  return rows;
+}
+
 export function toEntries(rows: Record<Day, DayRow>): SchoolHourInput[] {
   return DAYS.filter((d) => rows[d].on).map((d) => ({ day: d, timeSlot: `${rows[d].start}-${rows[d].end}` }));
 }
@@ -70,11 +77,7 @@ export function SchoolHoursFields({
         <button
           type="button"
           className="btn-soft px-3 py-1.5 text-xs"
-          onClick={() => {
-            const next = { ...value };
-            for (const d of DAYS) next[d] = { on: d !== 'Saturday' && d !== 'Sunday', start: '08:00', end: '15:00' };
-            onChange(next);
-          }}
+          onClick={() => onChange(weekdayPreset())}
         >
           <Icon name="school" size={14} /> Даваа–Баасан 08:00–15:00
         </button>
