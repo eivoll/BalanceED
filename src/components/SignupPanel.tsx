@@ -137,10 +137,10 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
       <SectionTitle icon="bulb">Сонирхол, ур чадвар, зорилго</SectionTitle>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field label="Сонирхол" htmlFor="su-int" hint="Таслалаар тусгайлна уу.">
-          <input id="su-int" className="field" value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="зураг зурах, хөгжим" />
+          <input id="su-int" className="field" value={interests} onChange={(e) => setInterests(e.target.value)} placeholder="зураг, хөгжим" />
         </Field>
         <Field label="Ур чадвар" htmlFor="su-skill">
-          <input id="su-skill" className="field" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="багийн ажил, график дизайн" />
+          <input id="su-skill" className="field" value={skills} onChange={(e) => setSkills(e.target.value)} placeholder="багийн ажил, дизайн" />
         </Field>
         <Field label="Мэргэжлийн зорилго" htmlFor="su-goal">
           <input id="su-goal" className="field" value={goals} onChange={(e) => setGoals(e.target.value)} placeholder="дизайнер, инженер" />
@@ -156,7 +156,7 @@ export default function SignupPanel({ onSignedIn }: { onSignedIn: (user: AuthUse
           <input id="su-pname" className="field" value={parentName} onChange={(e) => setParentName(e.target.value)} placeholder="Бат-Эрдэнэ" />
         </Field>
         <Field label="Эцэг эхийн и-мэйл" htmlFor="su-pemail">
-          <input id="su-pemail" className="field" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="eceg.eh@mail.mn" />
+          <input id="su-pemail" className="field" type="email" value={parentEmail} onChange={(e) => setParentEmail(e.target.value)} placeholder="bat-erdene@mail.mn" autoComplete="email" />
         </Field>
         <Field label="Эцэг эхийн нууц үг" htmlFor="su-ppass">
           <input id="su-ppass" className="field" type="password" value={parentPassword} onChange={(e) => setParentPassword(e.target.value)} autoComplete="new-password" />

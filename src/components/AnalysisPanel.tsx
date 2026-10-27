@@ -76,7 +76,7 @@ export default function AnalysisPanel({ analysis }: { analysis: AnalysisDTO }) {
   return (
     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:items-start">
       <div className="grid grid-cols-1 content-start gap-5">
-        <Card title="Ачааллын үнэлгээ" subtitle="Ачаалал бол долоо хоног хэр дүүрэн нь, стресс бол тэр хэмжээг тэсвэрлэх амархан нь">
+        <Card title="Ачааллын үнэлгээ" subtitle="Ачаалал нь долоо хоног хэр дүүрэн байгааг, стресс нь тэр ачаалал хэр хүнд тусахыг харуулна">
           <div className="flex flex-wrap items-center gap-6">
             <GaugeDial score={wl.workloadScore} />
             <StressMeter score={wl.stressScore} risk={wl.stressRisk} />
