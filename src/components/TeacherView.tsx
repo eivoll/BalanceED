@@ -212,7 +212,8 @@ function PostWorkForm({ studentId, students, onPosted }: { studentId: string; st
   useEffect(() => setSid(studentId), [studentId]);
 
   async function post() {
-    if (!title.trim() || !subject.trim() || !date) return toastError('Бүх талбарыг бөглөнө үү.');
+    // The title field only exists in assignment mode, so exams must not be gated on it.
+    if (!subject.trim() || !date || (mode === 'assignment' && !title.trim())) return toastError('Бүх талбарыг бөглөнө үү.');
     const problem = await attempt(() =>
       mode === 'assignment' ? M.createAssignment(sid, title.trim(), subject.trim(), date) : M.createExam(sid, subject.trim(), date, time),
     );
