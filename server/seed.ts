@@ -21,7 +21,9 @@ export interface Tables {
   assignments: Table<Assignment>;
   exams: Table<Exam>;
   opportunities: Table<Opportunity>;
-  users: Table<UserAccount>;
+  users: Table<UserAccount> & {
+    byEmail(email: string): UserAccount | undefined;
+  };
   linkParent(parentId: string, studentId: string): void;
   addSignup(opportunityId: string, studentId: string): void;
   setSchoolHours(studentId: string, entries: { day: Day; timeSlot: string }[]): void;
