@@ -19,6 +19,7 @@ export const typeDefs = /* GraphQL */ `
     student
     parent
     teacher
+    admin
   }
 
   input SchoolHourInput {
@@ -62,6 +63,17 @@ export const typeDefs = /* GraphQL */ `
     role: Role!
     """Profiles this account is allowed to see: self, linked children, or the whole roster."""
     students: [StudentProfile!]!
+  }
+
+  """One account as the admin sees it: who they are and what hangs off them."""
+  type AdminUser {
+    id: ID!
+    email: String!
+    displayName: String!
+    role: Role!
+    createdAt: String!
+    """Profiles this user can reach: roster size, linked children, or their own."""
+    linkedStudents: Int!
   }
 
   type AboutMe {
@@ -239,6 +251,8 @@ export const typeDefs = /* GraphQL */ `
     matchedOpportunities(studentId: ID!): [Opportunity!]!
     workloadAnalysis(studentId: ID!): WorkloadAnalysis
     classWorkload: [ClassWorkloadRow!]!
+    """Admin only: every account in the system."""
+    adminUsers: [AdminUser!]!
   }
 
   type Mutation {
@@ -257,7 +271,7 @@ export const typeDefs = /* GraphQL */ `
     ): StudentProfile!
     addScheduleItem(studentId: ID!, day: Day!, timeSlot: String!, activity: String!): WeeklyScheduleItem!
     removeScheduleItem(id: ID!): Boolean!
-    """Replaces the whole week; an empty list clears the timetable."""
+    """Replaces the whole week; at least one day must stay."""
     setSchoolHours(studentId: ID!, entries: [SchoolHourInput!]!): [SchoolHour!]!
     approveSchedule(studentId: ID!, approved: Boolean!): StudentProfile!
     """A teacher adopts a self-signed student by the code the student shows."""
@@ -273,5 +287,9 @@ export const typeDefs = /* GraphQL */ `
     deleteOpportunity(id: ID!): Boolean!
     enrollOpportunity(opportunityId: ID!): Opportunity!
     unenrollOpportunity(opportunityId: ID!): Opportunity!
+    """Admin only: change what an existing account may do."""
+    adminSetRole(userId: ID!, role: Role!): AdminUser!
+    """Admin only: open a teacher login that has no student profile behind it."""
+    adminCreateTeacher(name: String!, email: String!, password: String!): AdminUser!
   }
 `;

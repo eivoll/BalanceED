@@ -8,6 +8,7 @@ const DEMO_ACCOUNTS: { email: string; role: string; who: string; icon: IconName 
   { email: 'teacher@demo.mn', role: 'Багш', who: 'ангийн ачаалал, даалгавар, сурагч нэмэх', icon: 'clipboard' },
   { email: 'student@demo.mn', role: 'Сурагч', who: 'хуваарь, даалгавар, танилцуулга', icon: 'book' },
   { email: 'parent@demo.mn', role: 'Эцэг эх', who: 'хуваарь баталгаажуулах, дэвшил', icon: 'heart' },
+  { email: 'admin@demo.mn', role: 'Админ', who: 'бүртгэлийн жагсаалт, эрх тохируулах', icon: 'shield' },
 ];
 
 const SIGNUP_STEPS: { title: string; body: string; icon: IconName }[] = [

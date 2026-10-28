@@ -115,6 +115,9 @@ export const Q = {
   classWorkload: () => gql<{ classWorkload: ClassRowDTO[] }>(
     `{ classWorkload { studentId studentName grade workloadScore status stressScore stressRisk topDriver } }`,
   ),
+  adminUsers: () => gql<{ adminUsers: AdminUserDTO[] }>(
+    `{ adminUsers { id email displayName role createdAt linkedStudents } }`,
+  ),
 };
 
 export const M = {
@@ -140,6 +143,14 @@ export const M = {
     gql(`mutation ($c: String!) { joinTeacher(code: $c) { id name } }`, { c: code }),
   linkParent: (code: string) =>
     gql(`mutation ($c: String!) { linkParent(code: $c) { id name } }`, { c: code }),
+  adminSetRole: (userId: string, role: RoleDTO) =>
+    gql(`mutation ($id: ID!, $r: Role!) { adminSetRole(userId: $id, role: $r) { id role } }`, { id: userId, r: role }),
+  adminCreateTeacher: (name: string, email: string, password: string) =>
+    gql(`mutation ($n: String!, $e: String!, $p: String!) { adminCreateTeacher(name: $n, email: $e, password: $p) { id email } }`, {
+      n: name,
+      e: email,
+      p: password,
+    }),
   toggleAssignment: (id: string, isCompleted: boolean) =>
     gql(`mutation ($id: ID!, $done: Boolean!) { toggleAssignment(id: $id, isCompleted: $done) { id } }`, { id, done: isCompleted }),
   createAssignment: (studentId: string, title: string, subject: string, dueDate: string) =>
@@ -219,7 +230,17 @@ export interface StudentDTO {
   joinCode: string | null;
 }
 
-export type RoleDTO = 'student' | 'parent' | 'teacher';
+export type RoleDTO = 'student' | 'parent' | 'teacher' | 'admin';
+
+export interface AdminUserDTO {
+  id: string;
+  email: string;
+  displayName: string;
+  role: RoleDTO;
+  createdAt: string;
+  /** Roster size, linked children, or the student's own profile — whatever this account can reach. */
+  linkedStudents: number;
+}
 
 export interface AuthUserDTO {
   id: string;

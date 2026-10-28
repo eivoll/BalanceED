@@ -39,7 +39,7 @@ export interface StudentProfile {
   joinCode: string;
 }
 
-export type Role = 'student' | 'parent' | 'teacher';
+export type Role = 'student' | 'parent' | 'teacher' | 'admin';
 
 export interface UserAccount {
   id: string;

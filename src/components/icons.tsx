@@ -26,6 +26,7 @@ export type IconName =
   | 'save'
   | 'school'
   | 'send'
+  | 'shield'
   | 'sparkles'
   | 'speech'
   | 'star'
@@ -162,6 +163,12 @@ const SHAPES: Record<IconName, ReactNode> = {
     <>
       <path d="M21 3.4 10.6 13.8" />
       <path d="M21 3.4 15.4 21l-4.8-7.2L3.4 9z" />
+    </>
+  ),
+  shield: (
+    <>
+      <path d="M12 3.2 19.4 6v6.1c0 4-3 6.7-7.4 8.7-4.4-2-7.4-4.7-7.4-8.7V6z" />
+      <path d="M8.9 11.9 11.3 14l4-4.2" />
     </>
   ),
   sparkles: (

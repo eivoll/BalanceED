@@ -16,6 +16,7 @@ import type {
   Day,
   Opportunity,
   OpportunityView,
+  Role,
   SchoolHour,
   StudentProfile,
   UserAccount,
@@ -79,6 +80,28 @@ function viewerStudentId(user: UserAccount): string | null {
   if (user.role === 'parent') return db.parentLinks.childrenOf(user.id)[0] ?? null;
   return null;
 }
+
+function requireAdmin(ctx: Ctx): UserAccount {
+  const user = currentUser(ctx);
+  if (user.role !== 'admin') throw new ForbiddenError('Энэ үйлдлийг зөвхөн админ хийх эрхтэй.');
+  return user;
+}
+
+function linkedStudentCount(user: UserAccount): number {
+  if (user.role === 'teacher') return db.students.byTeacher(user.id).length;
+  if (user.role === 'parent') return db.parentLinks.childrenOf(user.id).length;
+  if (user.role === 'student') return user.studentId && db.students.byId(user.studentId) ? 1 : 0;
+  return 0;
+}
+
+const adminUserView = (user: UserAccount) => ({
+  id: user.id,
+  email: user.email,
+  displayName: user.displayName,
+  role: user.role,
+  createdAt: user.createdAt,
+  linkedStudents: linkedStudentCount(user),
+});
 
 function authorize(ctx: Ctx, studentId: string, action: Action): StudentProfile {
   const user = currentUser(ctx);
@@ -381,6 +404,10 @@ export const resolvers = {
       const user = currentUser(ctx);
       if (user.role !== 'teacher') throw new ForbiddenError('Ангийн ачааллыг зөвхөн багш харах эрхтэй.');
       return buildClassWorkload(visibleStudents(user));
+    },
+    adminUsers: (_: unknown, __: unknown, ctx: Ctx) => {
+      requireAdmin(ctx);
+      return db.users.all().map(adminUserView);
     },
   },
 
@@ -689,6 +716,40 @@ export const resolvers = {
       if (!opp) throw new UserInputError('Боломж олдсонгүй.');
       db.signups.remove(opportunityId, user.studentId);
       return asView(opp, signupFacts(user));
+    },
+
+    adminSetRole: (_: unknown, { userId, role }: { userId: string; role: Role }, ctx: Ctx) => {
+      const admin = requireAdmin(ctx);
+      const target = db.users.byId(userId);
+      if (!target) throw new UserInputError('Хэрэглэгч олдсонгүй.');
+      if (target.id === admin.id) throw new UserInputError('Та өөрийнхөө эрхийг өөрчлөх боломжгүй.');
+      // A student login without a profile behind it would open an empty, undeletable view.
+      if (role === 'student' && !target.studentId) {
+        throw new UserInputError('Энэ бүртгэлд сурагчийн профайл холбогдоогүй — сурагч болгож болохгүй.');
+      }
+      const updated = db.users.update(userId, { role });
+      if (!updated) throw new UserInputError('Хэрэглэгч олдсонгүй.');
+      return adminUserView(updated);
+    },
+
+    adminCreateTeacher: async (_: unknown, { name, email, password }: { name: string; email: string; password: string }, ctx: Ctx) => {
+      requireAdmin(ctx);
+      const displayName = name.trim();
+      if (!displayName) throw new UserInputError('Нэр хоосон байж болохгүй.');
+      const mail = parseEmail(email);
+      const pw = parsePassword(password);
+      if (db.users.byEmail(mail)) throw new UserInputError(`${mail} хаяг аль хэдийн бүртгэлтэй байна.`);
+      const created = db.users.insert(
+        {
+          email: mail,
+          displayName,
+          role: 'teacher',
+          passwordHash: await hashPassword(pw),
+          createdAt: new Date().toISOString(),
+        },
+        'usr',
+      );
+      return adminUserView(created);
     },
   },
 };

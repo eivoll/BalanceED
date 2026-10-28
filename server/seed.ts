@@ -192,11 +192,12 @@ const OPPORTUNITIES: Opportunity[] = [
   },
 ];
 
-/** One scrypt run for all three accounts; only paid when the users table is empty. */
+/** One scrypt run for all four accounts; only paid when the users table is empty. */
 async function demoUsers(): Promise<UserAccount[]> {
   const createdAt = new Date().toISOString();
   const passwordHash = await hashPassword(DEMO_PASSWORD);
   return [
+    { id: 'usr_admin', email: 'admin@demo.mn', displayName: 'Админ', role: 'admin', passwordHash, createdAt },
     { id: 'usr_teacher', email: 'teacher@demo.mn', displayName: 'О. Энхжаргал', role: 'teacher', passwordHash, createdAt },
     { id: 'usr_student_1', email: 'student@demo.mn', displayName: 'Батбаяр Ганбаатар', role: 'student', passwordHash, createdAt, studentId: 'stu_1' },
     { id: 'usr_parent_1', email: 'parent@demo.mn', displayName: 'Г. Мөнхзул', role: 'parent', passwordHash, createdAt },
@@ -229,6 +230,19 @@ export async function seedIfEmpty(tables: Tables): Promise<void> {
     console.log(
       `[balanceed] seeded ${accounts.length} demo accounts (password "${DEMO_PASSWORD}") — change them with changePassword`,
     );
+  }
+
+  // The admin account arrived after some databases were already written, so it lands on its own.
+  if (!tables.users.byEmail('admin@demo.mn')) {
+    tables.users.insertSeed({
+      id: 'usr_admin',
+      email: 'admin@demo.mn',
+      displayName: 'Админ',
+      role: 'admin',
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      createdAt: new Date().toISOString(),
+    });
+    console.log('[balanceed] created the admin account — it shares the demo password shown on the login screen');
   }
 
   // Every student needs a timetable before the free-slot maths means anything.

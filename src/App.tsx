@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { A, attempt, M, type AuthUserDTO } from './api';
 import { ThemeProvider, useTheme } from './theme';
 import AccountPanel from './components/AccountPanel';
+import AdminView from './components/AdminView';
 import Landing from './components/Landing';
 import StudentView from './components/StudentView';
 import ParentView from './components/ParentView';
@@ -9,7 +10,7 @@ import TeacherView from './components/TeacherView';
 import { BrandMark, Icon } from './components/icons';
 import { CodeLinkForm, Pill, StatusIcon } from './components/shared';
 
-const ROLE_MN: Record<string, string> = { student: 'Сурагч', parent: 'Эцэг эх', teacher: 'Багш' };
+const ROLE_MN: Record<string, string> = { student: 'Сурагч', parent: 'Эцэг эх', teacher: 'Багш', admin: 'Админ' };
 
 function Shell() {
   const [user, setUser] = useState<AuthUserDTO | null>(null);
@@ -145,6 +146,7 @@ function Shell() {
           {user.role === 'teacher' && (
             <TeacherView students={students} initialStudentId={studentId} onChanged={refresh} />
           )}
+          {user.role === 'admin' && <AdminView me={user} />}
           {user.role === 'parent' && !students.length && (
             <div className="glass p-8 text-center text-sm text-muted">
               <p>Танд одоогоор холбогдсон хүүхэд алга.</p>
