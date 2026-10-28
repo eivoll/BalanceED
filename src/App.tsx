@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { A, attempt, M, type AuthUserDTO } from './api';
+import { A, attempt, M, type AuthUserDTO, type RoleDTO } from './api';
+import { navigate, usePage, type Page } from './router';
 import { ThemeProvider, useTheme } from './theme';
 import AccountPanel from './components/AccountPanel';
 import AdminView from './components/AdminView';
@@ -11,6 +12,21 @@ import { BrandMark, Icon } from './components/icons';
 import { CodeLinkForm, Pill, StatusIcon } from './components/shared';
 
 const ROLE_MN: Record<string, string> = { student: 'Сурагч', parent: 'Эцэг эх', teacher: 'Багш', admin: 'Админ' };
+
+/** The page a role lands on, and the only pages that role can open by URL. */
+const ROLE_HOME: Record<RoleDTO, Page> = {
+  student: 'schedule',
+  parent: 'parent',
+  teacher: 'teacher',
+  admin: 'admin',
+};
+
+const ROLE_PAGES: Record<RoleDTO, Page[]> = {
+  student: ['schedule', 'academics', 'opportunities', 'analysis', 'aboutme'],
+  parent: ['parent'],
+  teacher: ['teacher', 'publish'],
+  admin: ['admin'],
+};
 
 function Shell() {
   const [user, setUser] = useState<AuthUserDTO | null>(null);
@@ -38,8 +54,17 @@ function Shell() {
     refresh();
   }, [refresh]);
 
+  const page = usePage();
+  // A URL the signed-in role cannot open simply falls back to that role's home page.
+  const allowed = !!user && !!page && ROLE_PAGES[user.role].includes(page);
+  useEffect(() => {
+    if (!user || allowed) return;
+    navigate(ROLE_HOME[user.role], true);
+  }, [user, allowed]);
+
   const students = user?.students ?? [];
   const student = students.find((s) => s.id === studentId);
+  const activePage: Page | null = user ? (allowed ? page : ROLE_HOME[user.role]) : null;
 
   return (
     <div className="mx-auto max-w-6xl px-4 pb-16 pt-6 sm:px-6">
@@ -139,12 +164,14 @@ function Shell() {
 
       {!booting && !bootError && !user && <Landing onSignedIn={(u) => { setUser(u); setStudentId(u.students[0]?.id || ''); }} />}
 
-      {!booting && !bootError && user && (
+      {!booting && !bootError && user && activePage && (
         <main key={`${user.role}-${studentId}`} className="animate-rise">
-          {user.role === 'student' && student && <StudentView student={student} onStudentsChanged={refresh} />}
+          {user.role === 'student' && student && (
+            <StudentView student={student} page={activePage} onStudentsChanged={refresh} />
+          )}
           {user.role === 'parent' && student && <ParentView student={student} onStudentsChanged={refresh} />}
           {user.role === 'teacher' && (
-            <TeacherView students={students} initialStudentId={studentId} onChanged={refresh} />
+            <TeacherView students={students} page={activePage} initialStudentId={studentId} onChanged={refresh} />
           )}
           {user.role === 'admin' && <AdminView me={user} />}
           {user.role === 'parent' && !students.length && (

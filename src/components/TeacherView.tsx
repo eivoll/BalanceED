@@ -1,13 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DAYS } from '../../shared/types';
 import { attempt, M, Q, type AnalysisDTO, type ClassRowDTO, type OpportunityDTO, type ScheduleItemDTO, type StudentDTO } from '../api';
+import { navigate, type Page } from '../router';
 import RosterPanel from './RosterPanel';
 import { Icon } from './icons';
 import ScheduleGrid from './ScheduleGrid';
 import { DateField, TimeField, TimeRangeFields } from './DateTimeField';
-import { Card, CoachCard, DAY_MN, LEVEL_MN, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, riskLevel, scoreLevel, todayIso, useToast } from './shared';
+import { Card, CoachCard, DAY_MN, LEVEL_MN, PageNav, Pill, RISK_MN, STATUS_MN, StatusIcon, fmtDate, riskLevel, scoreLevel, todayIso, useToast } from './shared';
 
 const LEVELS = ['School', 'National', 'Global'];
+
+const TEACHER_TABS: { id: Page; label: string; icon: 'school' | 'send' }[] = [
+  { id: 'teacher', label: 'Ангид хяналт', icon: 'school' },
+  { id: 'publish', label: 'Нийтлэх', icon: 'send' },
+];
 
 function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
   const level = scoreLevel(score);
@@ -21,10 +27,12 @@ function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
 
 export default function TeacherView({
   students,
+  page,
   initialStudentId,
   onChanged,
 }: {
   students: StudentDTO[];
+  page: Page;
   initialStudentId: string;
   onChanged: () => void;
 }) {
@@ -60,8 +68,8 @@ export default function TeacherView({
     if (studentId && !students.some((s) => s.id === studentId)) setStudentId(students[0]?.id || '');
   }, [students, studentId]);
 
-  return (
-    <div className="grid grid-cols-1 gap-5">
+  const overview = (
+    <>
       <RosterPanel students={students} onChanged={onChanged} />
 
       {students.length === 0 && (
@@ -138,12 +146,30 @@ export default function TeacherView({
               </Card>
             </div>
           )}
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <PostWorkForm studentId={studentId} students={students} onPosted={reload} />
-            <PostOpportunityForm onPosted={reload} />
-          </div>
         </>
+      )}
+    </>
+  );
+
+  const publishing = (
+    <>
+      {students.length === 0 ? (
+        <div className="glass p-8 text-center text-sm text-muted">
+          <p>
+            Эхлээд «Ангид хяналт» хуудаснаа сурагч нэмнэ үү — даалгавар, шалгалт тухайн сурагчийн
+            хуваарьт очно.
+          </p>
+          <div className="mt-5">
+            <button type="button" className="btn-grad" onClick={() => navigate('teacher')}>
+              <Icon name="school" size={16} /> Ангид хяналт
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <PostWorkForm studentId={studentId} students={students} onPosted={reload} />
+          <PostOpportunityForm onPosted={reload} />
+        </div>
       )}
 
       <Card title="Боломжуудын жагсаалт" subtitle="Нийтлэгдсэн боломж, сурагчдын бүртгэл">
@@ -196,6 +222,13 @@ export default function TeacherView({
         </ul>
         {toastNode}
       </Card>
+    </>
+  );
+
+  return (
+    <div className="grid grid-cols-1 gap-5">
+      <PageNav label="Багшийн цэс" page={page} items={TEACHER_TABS} />
+      {page === 'publish' ? publishing : overview}
     </div>
   );
 }

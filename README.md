@@ -4,6 +4,7 @@ A workload-balancing app for Mongolian high-school students. It puts the weekly
 schedule, homework, exams and extracurricular opportunities in one place, scores
 how heavy a student's week is, and shows the result to the student, their
 teacher and their parent — each with a different view and different permissions.
+An admin account sees every signup and sets which role each one has.
 
 The interface is in Mongolian.
 
@@ -25,16 +26,46 @@ server on `:5173`, which proxies `/graphql` to the API. On first start it create
 
 ### Demo accounts
 
-All three share the password `Demo!2026`.
+All four share the password `Demo!2026`.
 
 | Role | Email | Sees |
 | --- | --- | --- |
+| Admin | `admin@demo.mn` | every signup, the role each account has, and a form to open a teacher login |
 | Teacher | `teacher@demo.mn` | class workload index, per-student schedule, post homework/exams, publish opportunities |
 | Student | `student@demo.mn` | own schedule, assignments, matched opportunities, AI analysis, About Me |
 | Parent | `parent@demo.mn` | child's schedule for approval, completion progress, a summary to read |
 
+The admin account is seeded like the others, and existing databases get it on
+their next start. It can list every account, change an account's role, and
+create a teacher login that has no student profile behind it. It cannot read a
+student's schedule or change its own role.
+
 That password is printed on the login screen on purpose. Before using this with
-real people, sign in and call `changePassword` for every account.
+real people, sign in and call `changePassword` for every account — the admin
+first.
+
+## Pages and URLs
+
+Every page has its own path, so a bookmark or a pasted link opens that page
+directly. Paths are Mongolian, written in Latin letters.
+
+| Path | Page | Role |
+| --- | --- | --- |
+| `/` | Login and sign-up | anyone |
+| `/student` | Weekly schedule, workload gauges | student |
+| `/daalgwar` | Homework and exams | student |
+| `/bolomj` | Matched opportunities | student |
+| `/shinjelgee` | AI workload analysis | student |
+| `/taniltsuulga` | About Me editor | student |
+| `/teacher` | Class roster and the workload index | teacher |
+| `/niitleh` | Post homework/exams, publish and list opportunities | teacher |
+| `/parent` | Schedule approval and progress | parent |
+| `/admin` | Account list, roles, teacher logins | admin |
+
+Opening a path that is not yours sends you to your own first page instead, and
+the API refuses the same data a second time — the path is not a security
+boundary. `src/router.ts` holds the table; it uses the History API, so there is
+no router dependency to install.
 
 ## Scripts
 
@@ -62,14 +93,16 @@ Everything has a working default, so `.env` is optional. Copy `.env.example` to
 ## Layout
 
     server/      Express + Apollo GraphQL API, SQLite access, auth, AI fallback
-    src/         React UI — Landing (login), then StudentView / TeacherView / ParentView
+    src/         React UI — Landing (login), then StudentView / TeacherView /
+                 ParentView / AdminView, with src/router.ts mapping the paths above
     shared/      types used by both sides
     data/        the SQLite file — gitignored, delete it to reseed
 
 ## Notes
 
 - Roles are enforced on the server, not just in the UI: a student's session
-  cannot read another student's data.
+  cannot read another student's data, and only an admin session can call the
+  `adminUsers`, `adminSetRole` and `adminCreateTeacher` operations.
 - Sessions are random tokens stored hashed; passwords use `crypto.scrypt`.
 - `data/` and `.env` are gitignored, so cloning gives you an empty database that
   reseeds itself on first run.

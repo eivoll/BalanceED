@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { navigate, type Page } from '../router';
 import { Icon, type IconName } from './icons';
 
 export const DAY_MN: Record<string, string> = {
@@ -313,6 +314,37 @@ export function CoachCard({ children, title = 'AI зөвлөгөө' }: { childre
         <div className="mn-bubble">{children}</div>
       </div>
     </div>
+  );
+}
+
+/** Route-backed tab strip — each button is a page with its own URL. */
+export function PageNav({
+  label,
+  page,
+  items,
+}: {
+  label: string;
+  page: Page;
+  items: { id: Page; label: string; icon: IconName }[];
+}) {
+  return (
+    <nav className="flex flex-wrap gap-2" aria-label={label}>
+      {items.map((t) => (
+        <button
+          key={t.id}
+          onClick={() => navigate(t.id)}
+          aria-current={page === t.id ? 'page' : undefined}
+          className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 ${
+            page === t.id
+              ? 'bg-accent text-onaccent shadow-md'
+              : 'border border-line bg-surface/70 text-muted hover:-translate-y-px hover:border-accent/50 hover:text-ink hover:shadow-sm'
+          }`}
+        >
+          <Icon name={t.icon} size={16} />
+          {t.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 

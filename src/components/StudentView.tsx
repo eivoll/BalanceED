@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { attempt, M, Q, type AnalysisDTO, type AssignmentDTO, type ExamDTO, type OpportunityDTO, type ScheduleItemDTO, type SchoolHourInput, type StudentDTO } from '../api';
+import type { Page } from '../router';
 import AboutMeEditor, { AddScheduleForm } from './AboutMeEditor';
 import AnalysisPanel from './AnalysisPanel';
 import AssignmentsPanel from './AssignmentsPanel';
 import OpportunityHub from './OpportunityHub';
 import ScheduleGrid from './ScheduleGrid';
 import { SchoolHoursCard } from './SchoolHoursEditor';
-import { Card, Donut, GaugeDial, StatusIcon, StressMeter, fmtDate, formatJoinCode, useToast } from './shared';
+import { Card, Donut, GaugeDial, PageNav, StatusIcon, StressMeter, fmtDate, formatJoinCode, useToast } from './shared';
 import { Icon, type IconName } from './icons';
 
-type Tab = 'schedule' | 'academics' | 'opportunities' | 'analysis' | 'aboutme';
-
-const TABS: { id: Tab; label: string; icon: IconName }[] = [
+const TABS: { id: Page; label: string; icon: IconName }[] = [
   { id: 'schedule', label: 'Хуваарь', icon: 'calendar' },
   { id: 'academics', label: 'Даалгавар & шалгалт', icon: 'book' },
   { id: 'opportunities', label: 'Боломжууд', icon: 'target' },
@@ -21,12 +20,13 @@ const TABS: { id: Tab; label: string; icon: IconName }[] = [
 
 export default function StudentView({
   student,
+  page,
   onStudentsChanged,
 }: {
   student: StudentDTO;
+  page: Page;
   onStudentsChanged: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>('schedule');
   const [schedule, setSchedule] = useState<ScheduleItemDTO[]>([]);
   const [assignments, setAssignments] = useState<AssignmentDTO[]>([]);
   const [exams, setExams] = useState<ExamDTO[]>([]);
@@ -137,25 +137,10 @@ export default function StudentView({
       </section>
 
       {/* Tabs */}
-      <nav className="flex flex-wrap gap-2" aria-label="Сурагчийн цэс">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-              tab === t.id
-                ? 'bg-accent text-onaccent shadow-md'
-                : 'border border-line bg-surface/70 text-muted hover:-translate-y-px hover:border-accent/50 hover:text-ink hover:shadow-sm'
-            }`}
-          >
-            <Icon name={t.icon} size={16} />
-            {t.label}
-          </button>
-        ))}
-      </nav>
+      <PageNav label="Сурагчийн цэс" page={page} items={TABS} />
 
-      <div key={tab} className="animate-rise grid grid-cols-1 gap-5">
-        {tab === 'schedule' && (
+      <div key={page} className="animate-rise grid grid-cols-1 gap-5">
+        {page === 'schedule' && (
           <>
             <Card title="Долоо хоногийн хуваарь" subtitle="Бүртгэгдээгүй үлдсэн цагууд автоматаар чөлөөт цаг болж тэмдэглэгдэнэ">
               <ScheduleGrid items={schedule} editable onRemove={removeItem} />
@@ -172,15 +157,15 @@ export default function StudentView({
           </>
         )}
 
-        {tab === 'academics' && (
+        {page === 'academics' && (
           <AssignmentsPanel assignments={assignments} exams={exams} onChanged={reload} />
         )}
 
-        {tab === 'opportunities' && <OpportunityHub items={matched} onChanged={reload} />}
+        {page === 'opportunities' && <OpportunityHub items={matched} onChanged={reload} />}
 
-        {tab === 'analysis' && analysis && <AnalysisPanel analysis={analysis} />}
+        {page === 'analysis' && analysis && <AnalysisPanel analysis={analysis} />}
 
-        {tab === 'aboutme' && <AboutMeEditor student={student} onSaved={() => { reload(); onStudentsChanged(); }} />}
+        {page === 'aboutme' && <AboutMeEditor student={student} onSaved={() => { reload(); onStudentsChanged(); }} />}
       </div>
       {toastNode}
     </div>
