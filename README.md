@@ -96,6 +96,9 @@ Everything has a working default, so `.env` is optional. Copy `.env.example` to
     src/         React UI — Landing (login), then StudentView / TeacherView /
                  ParentView / AdminView, with src/router.ts mapping the paths above
     shared/      types used by both sides
+    brand/       the mascot artwork, kept out of the served bundle
+    public/      static files as-is — icon-32/192 favicons, icon-180 for iOS,
+                 icon-80 for the header, all cut from brand/mascot-src.png
     data/        the SQLite file — gitignored, delete it to reseed
 
 ## Notes

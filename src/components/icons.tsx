@@ -245,28 +245,3 @@ export function Icon({
     </svg>
   );
 }
-
-/** BalanceEd mark — one beam, two pans, drawn so it reads clearly at 20px. */
-export function BrandMark({ size = 22, className }: { size?: number; className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width={size}
-      height={size}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <circle cx="12" cy="3.9" r="1.3" />
-      <path d="M12 5.2v14.4" />
-      <path d="M4.4 7.4h15.2" />
-      <path d="M2 12.2h4.8L4.4 7.4 2 12.2z" />
-      <path d="M17.2 12.2H22l-2.4-4.8-2.4 4.8z" />
-      <path d="M8.6 19.6h6.8" />
-    </svg>
-  );
-}

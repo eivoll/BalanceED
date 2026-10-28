@@ -8,7 +8,7 @@ import Landing from './components/Landing';
 import StudentView from './components/StudentView';
 import ParentView from './components/ParentView';
 import TeacherView from './components/TeacherView';
-import { BrandMark, Icon } from './components/icons';
+import { Icon } from './components/icons';
 import { CodeLinkForm, Pill, StatusIcon } from './components/shared';
 
 const ROLE_MN: Record<string, string> = { student: 'Сурагч', parent: 'Эцэг эх', teacher: 'Багш', admin: 'Админ' };
@@ -71,9 +71,7 @@ function Shell() {
       <header className="glass sticky top-4 z-40 mb-6 px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="brand-tile h-10 w-10">
-              <BrandMark size={24} />
-            </div>
+            <img src="/icon-80.png" alt="" width={80} height={80} className="h-10 w-10 shrink-0" />
             <div className="min-w-0">
               <h1 className="truncate text-lg font-extrabold tracking-tight">BalanceEd</h1>
               <p className="truncate text-[11px] font-medium text-muted">
